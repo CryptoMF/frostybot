@@ -136,6 +136,7 @@ maximum position size (which we wanted).</li>
 <li>added install script to aid with download and install of Frostybot (https://tinyurl.com/frostybot-installer)</li>
 <li>introduced a new central FrostyAPI (https://api.frostytrading.com) which is currently being used to get OHLCV data for Bitmex and Deribit. In the future, this central API could be used by all the Frostybots for various enhancements, such as version control, usage statistics, backtesting, notifications, trade analytics etc. For now though, it's only being used for OHLCV data.</li>
 <li>all caching, account information, symbol mappings and whitelist IP addresses are now stored in the SQLite database.</li>
+<li>added support for stoploss and takeprofit orders.</li>
 </ul>
 </td>
   </tr>
