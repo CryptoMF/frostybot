@@ -53,9 +53,13 @@
             foreach(['apiKey','secret','urls','headers'] as $field) {
                 $data['parameters'][$field] = (isset($params[$field]) ? $params[$field] : (isset($data['parameters'][$field]) ? $data['parameters'][$field] : null));
             }
-
+            if (isset($data['exchange'])) {
+                if (!in_array(strtolower($data['exchange']), ['deribit','ftx','bitmex'])) {
+                    logger::error('Exchange not supported: '.$data['exchange'].' (only Deribit, Bitmex and FTX are supported)');
+                }
+            }
             if ((isset($params['testnet'])) && (isset($params['exchange']))) {
-                print_r($params);
+                //print_r($params);
                 $url = self::geturl($params['exchange'], $params['testnet']);
                 if (!empty($url)) {
                     $data['parameters']['urls'] = ['api' => $url];
