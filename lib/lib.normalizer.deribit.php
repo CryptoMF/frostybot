@@ -2,7 +2,7 @@
 
     // Output normalizer for Deribit exchange
 
-    class normalizer_deribit extends normalizer {
+    class normalizer_deribit extends normalizer_base {
 
         public $orderSizing = 'quote';          // Base or quote
 

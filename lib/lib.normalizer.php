@@ -2,7 +2,7 @@
 
     // Base class from which all normalizers should be extended
 
-    abstract class normalizer {
+    abstract class normalizer_base {
 
         public $ccxt;
         public $options;

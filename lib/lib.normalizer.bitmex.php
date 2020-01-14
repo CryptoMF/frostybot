@@ -2,7 +2,7 @@
 
     // Output normalizer for Bitmex exchange
 
-    class normalizer_bitmex extends normalizer {
+    class normalizer_bitmex extends normalizer_base {
 
         public $orderSizing = 'quote';          // Base or quote
 

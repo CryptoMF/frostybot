@@ -2,7 +2,7 @@
 
     // Output normalizer for FTX exchange
 
-    class normalizer_ftx extends normalizer {
+    class normalizer_ftx extends normalizer_base {
 
         public $orderSizing = 'base';          // Base or quote
 
