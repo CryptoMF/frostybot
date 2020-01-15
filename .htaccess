@@ -1,0 +1,12 @@
+<FilesMatch "\.(htaccess|htpasswd|log|sh|inc|bak|db|sql)$">
+Order Allow,Deny
+Deny from all
+</FilesMatch>
+
+<FilesMatch "^\.">
+Order Allow,Deny
+Deny from all
+</FilesMatch>
+
+Options -Indexes
+IndexIgnore *
