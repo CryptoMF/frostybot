@@ -117,20 +117,17 @@
         }
 
         // Get list of positions from exchange
-        public function fetch_positions($markets) {
+        public function fetch_positions() {
             $result = [];
             $positions = $this->ccxt->private_get_position();
             foreach ($positions as $positionRaw) {
-                foreach ($markets as $market) {
-                    if ($positionRaw['symbol'] == $market->id) {
-                        $direction = $positionRaw['homeNotional']  == 0 ? 'flat' : ($positionRaw['homeNotional'] > 0 ? 'long' : ($positionRaw['homeNotional'] < 0 ? 'short' : 'null'));
-                        $baseSize = $positionRaw['homeNotional'];
-                        $quoteSize = $positionRaw['currentQty'];
-                        $entryPrice = $positionRaw['avgEntryPrice'];
-                        if (abs($baseSize) > 0) {
-                            $result[] = new positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
-                        }
-                    }
+                $market = $this->marketsById[$positionRaw['symbol']];
+                $direction = $positionRaw['homeNotional']  == 0 ? 'flat' : ($positionRaw['homeNotional'] > 0 ? 'long' : ($positionRaw['homeNotional'] < 0 ? 'short' : 'null'));
+                $baseSize = $positionRaw['homeNotional'];
+                $quoteSize = $positionRaw['currentQty'];
+                $entryPrice = $positionRaw['avgEntryPrice'];
+                if (abs($baseSize) > 0) {
+                    $result[] = new positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
                 }
             }
             return $result;

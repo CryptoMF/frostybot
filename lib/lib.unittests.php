@@ -122,9 +122,9 @@
                     'command'   =>  '<account>:long size=2x symbol=BTCUSD',
                     'expected'  =>  [
                         'code'      =>  0,
-                        'type'      =>  'array',
+                        'type'      =>  'OBJECT',
                         'message'   =>  'SUCCESS',
-                        'data'      =>  '<propertyval:status:closed>',
+                        'data'      =>  '<propertyval:status:filled>',
                     ],                                    
                 ],
             ],
@@ -139,9 +139,9 @@
                     'command'   =>  '<account>:close size=50% symbol=BTCUSD',
                     'expected'  =>  [
                         'code'      =>  0,
-                        'type'      =>  'array',
+                        'type'      =>  'OBJECT',
                         'message'   =>  'SUCCESS',
-                        'data'      =>  '<propertyval:status:closed>',
+                        'data'      =>  '<propertyval:status:filled>',
                     ],                                    
                 ],
             ],
@@ -156,9 +156,9 @@
                     'command'   =>  '<account>:short size=100 symbol=BTCUSD',
                     'expected'  =>  [
                         'code'      =>  0,
-                        'type'      =>  'array',
+                        'type'      =>  'OBJECT',
                         'message'   =>  'SUCCESS',
-                        'data'      =>  '<propertyval:status:closed>',
+                        'data'      =>  '<propertyval:status:filled>',
                     ],                                    
                 ],
             ],
@@ -173,9 +173,9 @@
                     'command'   =>  '<account>:close size=50% symbol=BTCUSD',
                     'expected'  =>  [
                         'code'      =>  0,
-                        'type'      =>  'array',
+                        'type'      =>  'OBJECT',
                         'message'   =>  'SUCCESS',
-                        'data'      =>  '<propertyval:status:closed>',
+                        'data'      =>  '<propertyval:status:filled>',
                     ],                                    
                 ],
             ],
@@ -190,9 +190,9 @@
                     'command'   =>  '<account>:close symbol=BTCUSD',
                     'expected'  =>  [
                         'code'      =>  0,
-                        'type'      =>  'array',
+                        'type'      =>  'OBJECT',
                         'message'   =>  'SUCCESS',
-                        'data'      =>  '<propertyval:status:closed>',
+                        'data'      =>  '<propertyval:status:filled>',
                     ],                                    
                 ],
             ],
@@ -207,9 +207,9 @@
                     'command'   =>  '<account>:long size=1x symbol=ETHUSD',
                     'expected'  =>  [
                         'code'      =>  0,
-                        'type'      =>  'array',
+                        'type'      =>  'OBJECT',
                         'message'   =>  'SUCCESS',
-                        'data'      =>  '<propertyval:status:closed>',
+                        'data'      =>  '<propertyval:status:filled>',
                     ],                                    
                 ],
             ],
@@ -224,9 +224,9 @@
                     'command'   =>  '<account>:close size=50% symbol=ETHUSD',
                     'expected'  =>  [
                         'code'      =>  0,
-                        'type'      =>  'array',
+                        'type'      =>  'OBJECT',
                         'message'   =>  'SUCCESS',
-                        'data'      =>  '<propertyval:status:closed>',
+                        'data'      =>  '<propertyval:status:filled>',
                     ],                                    
                 ],
             ],
@@ -241,9 +241,9 @@
                     'command'   =>  '<account>:short size=10 symbol=ETHUSD',
                     'expected'  =>  [
                         'code'      =>  0,
-                        'type'      =>  'array',
+                        'type'      =>  'OBJECT',
                         'message'   =>  'SUCCESS',
-                        'data'      =>  '<propertyval:status:closed>',
+                        'data'      =>  '<propertyval:status:filled>',
                     ],                                    
                 ],
             ],
@@ -258,9 +258,9 @@
                     'command'   =>  '<account>:close size=50% symbol=ETHUSD',
                     'expected'  =>  [
                         'code'      =>  0,
-                        'type'      =>  'array',
+                        'type'      =>  'OBJECT',
                         'message'   =>  'SUCCESS',
-                        'data'      =>  '<propertyval:status:closed>',
+                        'data'      =>  '<propertyval:status:filled>',
                     ],                                    
                 ],
             ],
@@ -275,9 +275,9 @@
                     'command'   =>  '<account>:close symbol=ETHUSD',
                     'expected'  =>  [
                         'code'      =>  0,
-                        'type'      =>  'array',
+                        'type'      =>  'OBJECT',
                         'message'   =>  'SUCCESS',
-                        'data'      =>  '<propertyval:status:closed>',
+                        'data'      =>  '<propertyval:status:filled>',
                     ],                                    
                 ],
             ],
@@ -427,6 +427,9 @@
                 $checkData = true;
             }
             $checkResult = ($checkCode && $checkType && $checkMessage && $checkData);
+            if (!$checkResult) {
+                print_r(['expected' => $expected, 'actual' => $actual]);
+            }
             return (bool) $checkResult;
         }
 

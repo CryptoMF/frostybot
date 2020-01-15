@@ -155,22 +155,19 @@
         }
 
         // Get list of positions from exchange
-        public function fetch_positions($markets) {
+        public function fetch_positions() {
             $result = [];
             $positions = $this->ccxt->private_get_positions();
             foreach ($positions['result'] as $positionRaw) {
-                foreach ($markets as $market) {
-                    if ($positionRaw['instrument'] === $market->symbol) {
-                        $base = $market->base;
-                        $quote = $market->quote;
-                        $direction = ($positionRaw['size']  == 0 ? 'flat' : $positionRaw['size'] > 0 ? 'long' : ($positionRaw['size'] < 1 ? 'short' : 'null'));
-                        $baseSize = abs($positionRaw['delta']);
-                        $quoteSize = abs($positionRaw['amount']);
-                        $entryPrice = $positionRaw['averagePrice'];
-                        if (abs($baseSize) > 0) {
-                            $result[] = new positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
-                        }
-                    }
+                $market = $this->marketsById[$positionRaw['instrument']];
+                $base = $market->base;
+                $quote = $market->quote;
+                $direction = ($positionRaw['size']  == 0 ? 'flat' : $positionRaw['size'] > 0 ? 'long' : ($positionRaw['size'] < 1 ? 'short' : 'null'));
+                $baseSize = abs($positionRaw['delta']);
+                $quoteSize = abs($positionRaw['amount']);
+                $entryPrice = $positionRaw['averagePrice'];
+                if (abs($baseSize) > 0) {
+                    $result[] = new positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
                 }
             }
             return $result;
@@ -242,7 +239,7 @@
             $ordersHistory = ($onlyOpen === true ? ['result' => []] : $this->ccxt->private_get_orderhistory());
             $ordersCurrent = [];
             $orders = $ordersHistory['result'];
-            foreach ($markets as $market) {     // What an absolutely shyte API...
+            foreach ($this->markets as $market) {     // What an absolutely shyte API...
                 $symbol = $market->symbol;
                 $marketOrders = $this->ccxt->private_get_getopenorders(['type'=>'any','instrument'=>$symbol]);
                 $orders = array_merge($orders, $marketOrders['result']);

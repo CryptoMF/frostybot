@@ -215,13 +215,13 @@
                                                 break;
                         case 'POSITIONS'    :   $result = $this->exchange->positions();
                                                 break;
-                        case 'ORDER'        :   $result = $this->exchange->order(requiredParams($this->params,['id']));
+                        case 'ORDER'        :   $result = $this->exchange->order(requiredParams($this->params,['id','symbol']));
                                                 break;
-                        case 'ORDERS'       :   $result = $this->exchange->orders(requiredParams($this->params,[]));
+                        case 'ORDERS'       :   $result = $this->exchange->orders(requiredParams($this->params,['symbol']));
                                                 break;
-                        case 'CANCEL'       :   $result = $this->exchange->cancel(requiredParams($this->params,['id']));
+                        case 'CANCEL'       :   $result = $this->exchange->cancel(requiredParams($this->params,['id','symbol']));
                                                 break;
-                        case 'CANCELALL'    :   $result = $this->exchange->cancel(array_merge($this->params,['id'=>'all']));
+                        case 'CANCELALL'    :   $result = $this->exchange->cancel(requiredParams(array_merge($this->params,['id'=>'all']),['id','symbol']));
                                                 break;
                         case 'LONG'         :   $result = $this->exchange->long(requiredParams($this->params,['symbol','size']));
                                                 break;

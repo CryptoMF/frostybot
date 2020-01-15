@@ -10,6 +10,9 @@
                     //'mode' => 'test',
                 ]; 
         private $exchange;
+        private $markets;
+        private $marketsById;
+        private $marketsBySymbol;
         private $params;
 
         // Construct backend CCXT exchange object, and instanciate the appropriate output normalizer if it exists
@@ -23,6 +26,16 @@
             }
             if (class_exists($normalizer)) {
                 $this->normalizer = new $normalizer($this->ccxt, $options);
+            }
+            $markets = $this->markets(60);
+            list($byid, $bysymbol) = array_values((array) $this->index_markets($markets));
+            $this->markets = $markets;
+            $this->marketsById = $byid;
+            $this->marketsBySymbol = $bysymbol;
+            if(is_object($this->normalizer)) {
+                $this->normalizer->markets = $markets;
+                $this->normalizer->marketsById = $byid;
+                $this->normalizer->marketsBySymbol = $bysymbol;
             }
         }
 
@@ -68,20 +81,21 @@
             if ($cacheResult = cache::get($key,$cachetime)) {
                 return $cacheResult;
             } else {
-                $markets = $this->markets(false,120);
-                foreach($markets as $market) {
-                    if ($market->symbol === $symbol) {
-                        if (is_null($market->bid) || is_null($market->ask)){
-                            $ticker = $this->ccxt->fetch_ticker($symbol);
-                            $market->bid = $ticker['bid'];
-                            $market->ask = $ticker['ask'];
-                        }
-                        cache::set($key,$market);
-                        return $market;
+                //$markets = $this->markets(false,120);
+                $markets = $this->markets;
+                if (array_key_exists($symbol, $this->marketsBySymbol)) {
+                    $market = $this->marketsBySymbol[$symbol];
+                    if (is_null($market->bid) || is_null($market->ask)){
+                        $ticker = $this->ccxt->fetch_ticker($symbol);
+                        $market->bid = $ticker['bid'];
+                        $market->ask = $ticker['ask'];
                     }
+                    cache::set($key,$market);
+                    return $market;
+                } else {
+                    logger::error('Invalid market symbol');
+                    return false;
                 }
-                logger::error('Invalid market symbol');
-                return false;
             }
         }
 
@@ -107,6 +121,17 @@
             }
         }
 
+        // Index markets by ID and by Symbol
+        private function index_markets($markets) {
+            $byid = [];
+            $bysymbol = [];
+            foreach ($markets as $market) {
+                $byid[$market->id] = $market;
+                $bysymbol[$market->symbol] = $market;
+            }
+            return (object) ['byid' => $byid, 'bysymbol' => $bysymbol];
+        }
+
         // Get position for specific symbol
         public function position($params) {
             $symbol = (is_array($params) ? $params['symbol'] : $params);
@@ -125,8 +150,7 @@
 
         // Get current positions
         public function positions() {
-            $markets = $this->markets(true,5);
-            return $this->normalizer->fetch_positions($markets);
+            return $this->normalizer->fetch_positions();
         }
 
         // Get order data for a specific order ID
@@ -144,7 +168,7 @@
 
         // Get all orders
         public function orders($settings = []) {
-            $markets = $this->markets(true,300);
+            $markets = $this->markets;
             $filters = [];
             if (isset($settings['id'])) { $filters['id'] = $settings['id']; }
             if (isset($settings['symbol'])) { $filters['symbol'] = $settings['symbol']; }
@@ -232,15 +256,15 @@
         // Get total balance in USD value using current market data
         public function total_balance_usd() {
             $balances = $this->fetch_balance();
-            $usd_free = 0;
+            $usd_total = 0;
             foreach ($balances as $balance) {
-                $usd_free += $balance->balance_usd_total;
+                $usd_total += $balance->balance_usd_total;
             }
-            return $usd_free;
+            return $usd_total;
         }
 
         // Get current position size in number of contracts (as opposed to USD)
-        private function positionSize($symbol) {
+        private function position_size($symbol) {
             $position = $this->position(['symbol' => $symbol, 'suppress' => true]);
             $market = $this->market(['symbol' => $symbol]);
             if (is_object($position)) {           // If already in a position
@@ -252,7 +276,7 @@
         }
 
         // Get current position direction (long or short)
-        private function positionDirection($symbol) {
+        private function position_direction($symbol) {
             $position = $this->position(['symbol' => $symbol, 'suppress' => true]);
             if (is_object($position)) {           // If already in a position
                 return $position->direction;
@@ -261,7 +285,7 @@
         }
 
         // Convert USD value to number of contracts, depending of if exchange uses base or quote price and what the acual contract size is per contract
-        private function convertSize($usdSize, $params) {
+        private function convert_size($usdSize, $params) {
             $symbol = $params['symbol'];
             $market = $this->market(['symbol' => $symbol]);
             $contractSize = $market->contract_size;                                                      // Exchange contract size in USD
@@ -290,10 +314,10 @@
                 $multiplier = str_replace('%','',strtolower($size)) / 100;
                 $size = $this->total_balance_usd() * $multiplier;
             }
-            $requestedSize = $this->convertSize($size, $params);
+            $requestedSize = $this->convert_size($size, $params);
             $position = $this->position(['symbol' => $symbol, 'suppress' => true]);
-            $positionSize = $this->positionSize($symbol);                                               // Position size in contracts
-            $currentDir = $this->positionDirection($symbol);                                            // Current position direction (long or short)
+            $positionSize = $this->position_size($symbol);                                               // Position size in contracts
+            $currentDir = $this->position_direction($symbol);                                            // Current position direction (long or short)
             if ($positionSize != 0) {                                                                   // If already in a position
                 if ($direction != $currentDir) {
                     $requestedSize += $positionSize;                                                    // Flip position if required
@@ -307,15 +331,16 @@
                     }
                 }
             }
+  
             if ($requestedSize > 0) {
                 $balance = $this->total_balance_usd();
                 $comment = isset($params['comment']) ? $params['comment'] : 'None';
-                logger::info('TRADE:'.strtoupper($direction).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.($requestedSize * $market->contract_size).' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
                 $rawResult = $this->ccxt->create_order($symbol, $type, ($direction == "long" ? "buy" : "sell"), abs($requestedSize), $price);
-                $orderresult = $this->normalizer->parse_order($market, $rawResult['info']);
+                $orderResult = $this->normalizer->parse_order($market, $rawResult['info']);
+                logger::info('TRADE:'.strtoupper($direction).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.($requestedSize * $market->contract_size).' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
                 if ((isset($params['stoptrigger'])) || (isset($params['profittrigger']))) {
                     $linkedOrder = new linkedOrderObject($stub, $symbol);
-                    $linkedOrder->add($orderresult);
+                    $linkedOrder->add($orderResult);
                     // Stop loss orders
                     if (isset($params['stoptrigger'])) {
                         $slparams = [
@@ -341,7 +366,7 @@
                     }
                     return $linkedOrder;
                 } else {
-                    return $orderresult;
+                    return $orderResult;
                 }
             }
             return false;
@@ -418,8 +443,10 @@
                 if ($contract_size > 0) {
                     $balance = $this->total_balance_usd();
                     $comment = isset($params['comment']) ? $params['comment'] : 'None';
+                    $rawResult = $this->ccxt->create_order($symbol, $type, $dir, abs($contract_size), $price);
+                    $orderResult = $this->normalizer->parse_order($market, $rawResult['info']);
                     logger::info('TRADE:CLOSE | Symbol: '.$symbol.' | Direction: '.$dir.' | Type: '.$type.' | Size: '.($contract_size * $market->contract_size).' | Price: '.(is_null($price) ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
-                    return $this->ccxt->create_order($symbol, $type, $dir, abs($contract_size), $price);
+                    return $orderResult;
                 }
             } else {
                 logger::error("You do not currently have a position on ".$symbol);
