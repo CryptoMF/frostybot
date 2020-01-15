@@ -380,6 +380,7 @@
                                     'command'   =>  $parsedCommand,
                                     'result'    =>  $unitTestResult,
                 ];
+                sleep(1); // Don't make the APIs cry
             }
             return (object) [
                 'results'   =>  $testResults,
@@ -427,9 +428,6 @@
                 $checkData = true;
             }
             $checkResult = ($checkCode && $checkType && $checkMessage && $checkData);
-            if (!$checkResult) {
-                print_r(['expected' => $expected, 'actual' => $actual]);
-            }
             return (bool) $checkResult;
         }
 
