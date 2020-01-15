@@ -23,8 +23,8 @@
         }
 
         public function get_market_by_id($id) {
-            if (array_key_exists($symbol, $this->marketsBySymbol)) {
-                return $this->marketsBySymbol[$symbol];
+            if (array_key_exists($id, $this->marketsById)) {
+                return $this->marketsById[$id];
             }
             return false;
         }
