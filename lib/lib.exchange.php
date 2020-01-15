@@ -10,9 +10,9 @@
                     //'mode' => 'test',
                 ]; 
         private $exchange;
-        private $markets;
-        private $marketsById;
-        private $marketsBySymbol;
+        public $markets;
+        public $marketsById;
+        public $marketsBySymbol;
         private $params;
 
         // Construct backend CCXT exchange object, and instanciate the appropriate output normalizer if it exists
@@ -168,7 +168,6 @@
 
         // Get all orders
         public function orders($settings = []) {
-            $markets = $this->markets;
             $filters = [];
             if (isset($settings['id'])) { $filters['id'] = $settings['id']; }
             if (isset($settings['symbol'])) { $filters['symbol'] = $settings['symbol']; }
@@ -181,7 +180,7 @@
                 $onlyOpen = false;
             }
             $result = [];
-            $orders = $this->normalizer->fetch_orders($markets,$onlyOpen);
+            $orders = $this->normalizer->fetch_orders($onlyOpen);
             foreach ($orders as $order) {
                 if (count($filters) > 0) {
                     $filter = false;
@@ -336,7 +335,7 @@
                 $balance = $this->total_balance_usd();
                 $comment = isset($params['comment']) ? $params['comment'] : 'None';
                 $rawResult = $this->ccxt->create_order($symbol, $type, ($direction == "long" ? "buy" : "sell"), abs($requestedSize), $price);
-                $orderResult = $this->normalizer->parse_order($market, $rawResult['info']);
+                $orderResult = $this->normalizer->parse_order($rawResult['info']);
                 logger::info('TRADE:'.strtoupper($direction).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.($requestedSize * $market->contract_size).' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
                 if ((isset($params['stoptrigger'])) || (isset($params['profittrigger']))) {
                     $linkedOrder = new linkedOrderObject($stub, $symbol);
@@ -399,7 +398,7 @@
             }
             if ($size > 0) {
                 $result = $this->normalizer->create_stoploss($market->id, $direction, $size, $trigger, $price, $reduce);
-                return $this->normalizer->parse_order($market, $result);
+                return $this->normalizer->parse_order($result);
             } else {
                 logger::error("Could not automatically determine the size of the stop loss order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
@@ -421,7 +420,7 @@
             }
             if ($size > 0) {
                 $result = $this->normalizer->create_takeprofit($market->id, $direction, $size, $trigger, $reduce);
-                return $this->normalizer->parse_order($market, $result);
+                return $this->normalizer->parse_order($result);
             } else {
                 logger::error("Could not automatically determine the size of the take profit order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
@@ -444,7 +443,7 @@
                     $balance = $this->total_balance_usd();
                     $comment = isset($params['comment']) ? $params['comment'] : 'None';
                     $rawResult = $this->ccxt->create_order($symbol, $type, $dir, abs($contract_size), $price);
-                    $orderResult = $this->normalizer->parse_order($market, $rawResult['info']);
+                    $orderResult = $this->normalizer->parse_order($rawResult['info']);
                     logger::info('TRADE:CLOSE | Symbol: '.$symbol.' | Direction: '.$dir.' | Type: '.$type.' | Size: '.($contract_size * $market->contract_size).' | Price: '.(is_null($price) ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
                     return $orderResult;
                 }

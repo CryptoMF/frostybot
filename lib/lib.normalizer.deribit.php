@@ -210,7 +210,10 @@
         }
 
         // Parse order result
-        public function parse_order($market, $order) {
+        public function parse_order($order) {
+            if ((is_object($order)) && (get_class($order) == 'orderObject')) {
+                return $order;
+            }
             if (isset($order['result'])) {
                 if (isset($order['result']['order'])) {
                     $order = $order['result']['order'];  // Fix some inconsistency in the API
@@ -218,6 +221,7 @@
                     $order = $order['result'];  // Fix some inconsistency in the API
                 }
             }
+            $market = $this->get_market_by_symbol($order['instrument']);
             $id = $order['orderId'];
             $timestamp = strtotime($order['created']);
             $type = str_replace('_','',strtolower($order['type']));
@@ -235,7 +239,8 @@
         }
         
         // Get list of orders from exchange
-        public function fetch_orders($markets, $onlyOpen = false) {
+        public function fetch_orders($onlyOpen = false) {
+            $markets = $this->markets;
             $ordersHistory = ($onlyOpen === true ? ['result' => []] : $this->ccxt->private_get_orderhistory());
             $ordersCurrent = [];
             $orders = $ordersHistory['result'];
@@ -246,11 +251,7 @@
             }
             $result = [];
             foreach ($orders as $order) {
-                foreach ($markets as $market) {
-                    if ($order['instrument'] === $market->symbol) {
-                        $result[] = $this->parse_order($market, $order);
-                    }
-                }
+                $result[] = $this->parse_order($order);
             }
             return $result;
         }

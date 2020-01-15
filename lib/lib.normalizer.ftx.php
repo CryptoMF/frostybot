@@ -127,7 +127,8 @@
             if (!is_null($price)) {
                 $params['orderPrice'] = $price;
             }
-            return $this->ccxt->private_post_conditional_orders($params);
+            $result = $this->ccxt->private_post_conditional_orders($params);
+            return $this->parse_order($result);
         }
 
         // Create a take profit order
@@ -140,14 +141,19 @@
                 'triggerPrice' => $trigger,
                 'reduceOnly' =>  $reduce,
             ];
-            return $this->ccxt->private_post_conditional_orders($params);
+            $result = $this->ccxt->private_post_conditional_orders($params);
+            return $this->parse_order($result);
         }
 
         // Parse order result
-        public function parse_order($market, $order) {
+        public function parse_order($order) {
+            if ((is_object($order)) && (get_class($order) == 'orderObject')) {
+                return $order;
+            }
             if (isset($order['result'])) {
                 $order = $order['result'];  // Fix some inconsistency in the API
             }
+            $market = $this->get_market_by_symbol($order['future']);
             $id = $order['id'];
             $timestamp = strtotime($order['createdAt']);
             $type = strtolower($order['type']);
@@ -182,11 +188,7 @@
             $orders = array_merge($ordersNormal['result'],$ordersTrigger['result']);
             $result = [];
             foreach ($orders as $order) {
-                foreach ($markets as $market) {
-                    if ($order['future'] === $market->symbol) {
-                        $result[] = $this->parse_order($market, $order);
-                    }
-                }
+                $result[] = $this->parse_order($order);
             }
             return $result;
         }

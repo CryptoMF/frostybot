@@ -145,11 +145,12 @@
                 'execInst' => ($reduce == true ? 'ReduceOnly' : 'Close'),
             ];
             if (is_null($price)) {
-                return $this->ccxt->private_post_order($params);
+                $result = $this->ccxt->private_post_order($params);
             } else {
                 $params['ordType'] = 'StopLimit';
-                return $this->ccxt->private_post_order($params);
+                $result = $this->ccxt->private_post_order($params);
             }
+            return $this->parse_order($result);
         }
 
         // Create a take profit order (Bitmex take profit orders work more like stop orders, so if order to keep things consistent, I've chosen to just use limit orders)
@@ -162,11 +163,16 @@
                 'price' => $trigger,
                 //'execInst' => ($reduce == true ? 'ReduceOnly' : 'Close'),  // This breaks if you don't already have an open position
             ];
-            return $this->ccxt->private_post_order($params);
+            $result = $this->ccxt->private_post_order($params);
+            return $this->parse_order($result);
         }
 
         // Parse order result
-        public function parse_order($market, $order) {
+        public function parse_order($order) {
+            if ((is_object($order)) && (get_class($order) == 'orderObject')) {
+                return $order;
+            }
+            $market = $this->get_market_by_id($order['symbol']);
             $id = $order['orderID'];
             $timestamp = strtotime($order['timestamp']);
             $type = strtolower($order['ordType']);
@@ -183,15 +189,11 @@
         }
      
         // Get list of orders from exchange
-        public function fetch_orders($markets) {
+        public function fetch_orders() {
             $orders = $this->ccxt->private_get_order();
             $result = [];
             foreach ($orders as $order) {
-                foreach ($markets as $market) {
-                    if ($order['symbol'] === $market->id) {
-                        $result[] = $this->parse_order($market, $order);
-                    }
-                }
+                $result[] = $this->parse_order($order);
             }
             return $result;
         }
@@ -222,13 +224,10 @@
         // Cancel all orders
         public function cancel_all_orders($symbol = null) { 
             if (!is_null($symbol)) {
-                $markets = $this->ccxt->fetch_markets();
-                foreach($markets as $market) {
-                    if ($market['symbol'] == $symbol) {
-                        $symbol=$market['id'];
-                        break;
-                    }
-                }
+                $market = $this->get_market_by_symbol($symbol);
+                $symbol = $market->id;
+                echo $symbol;
+                die;
             }
             if (!is_null($symbol)) {
                 $result = $this->ccxt->private_delete_order_all(['symbol'=>$symbol]);
