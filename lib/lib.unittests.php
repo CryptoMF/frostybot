@@ -79,7 +79,7 @@
                 'type'      =>  'command',
                 'params'    =>  [
                     'accounts'  =>  [
-                        //'deribit',
+                        'deribit',
                         'ftx',
                         'bitmex',
                     ],
@@ -96,7 +96,7 @@
                 'type'      =>  'command',
                 'params'    =>  [
                     'accounts'  =>  [
-                        //'deribit',
+                        'deribit',
                         'ftx',
                         'bitmex',
                     ],
