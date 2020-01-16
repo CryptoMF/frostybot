@@ -35,7 +35,7 @@ Currently Bitmex, Deribit and FTX exchanges are supported for perpetual and futu
 We will add more exchanges based on user demand. Keeping the code cross-compatible over all the exchanges is quite complex so we will only consider adding additional exchanges if a significant number of users request it. Bear in mind that this software is free, so we are under no obgligation to add features or provide support, but we will endevour to help out when and where we can. Support can also be found in #the-lab channel on Krown's Crypto Cave Discord community. There are a lot of very knowlegeable guys willing to help out if you need assistance.
 
 ## Scope      
-This bot is speficially designed to execute orders based on webhook alerts received from Tradingview. If you have used Autoview in the past you will understand the concept of converting Tradingview strategies and scripts into executable orders on your exchange. However, unlike Autoview, Frostybot makes use of an external web server (VPS, AWS etc), so does not require your PC to be powered on or your browser to be open for it to work. 
+This bot is specifically designed to execute orders based on webhook alerts received from Tradingview. If you have used Autoview in the past you will understand the concept of converting Tradingview strategies and scripts into executable orders on your exchange. However, unlike Autoview, Frostybot makes use of an external web server (VPS, AWS etc), so does not require your PC to be powered on or your browser to be open for it to work. 
 
 ## Requirements
 In order to use Frostybot, you will need the following:
