@@ -142,7 +142,7 @@ maximum position size (which we wanted).</li>
 <tr>
     <td>Current</td>
     <td><ul>
-<li>added symbolmap command to configure symbol mappings for each exchange</li>
+<li>added SYMBOLMAP command to configure symbol mappings for each exchange</li>
 <li>optimized market data passthrough to the normalizers</li>
 <li>stop loss and take profit orders now return an orderObject instead of an array</li>
       </ul>
