@@ -125,7 +125,6 @@ If you would prefer not to use git, you can also manually download and unzip the
       cd /var/www/html
       sudo chgrp -R www-data frostybot
       sudo chmod -R 640 frostybot
-      sudo chmod -R 660 frostybot/cache
       sudo chmod -R 660 frostybot/db
       sudo chmod -R 660 frostybot/log
       sudo chmod 750 frostybot/frostybot
