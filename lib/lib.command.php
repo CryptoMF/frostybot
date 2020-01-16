@@ -161,15 +161,15 @@
             $this->_parseParams();
             logger::debug($this->type." command issued: ".str_replace('__frostybot__:','',$this->params['stub'].':'.$this->params['command']).(isset($this->params['comment']) ? ' ('.$this->params['comment'].')' : ''));
             if (requiredParams($this->params,['stub','command']) !== false) {
-                $stub = $this->params['stub'];
-                $command = $this->params['command'];
-                if ($command == 'config') {  // Don't load config if we are busy configuring it
+                $stub = strtolower($this->params['stub']);
+                $command = strtolower($this->params['command']);
+                if ($command == 'config') {                        // Don't load config if we are busy configuring it
                     $this->params['stub_update'] = $stub;
                     $stub = '__frostybot__';
                 }
                 $accounts = config::get();
-                if (($stub == '__frostybot__') || ($command == 'config') || (array_key_exists($stub, $accounts))) {
-                    if (($stub !== '__frostybot__') && ($command !== 'config')) {
+                if (($stub == '__frostybot__') || (in_array($command,['config','symbolmap'])) || (array_key_exists($stub, $accounts))) {
+                    if (($stub !== '__frostybot__') && (!in_array($command,['config','symbolmap']))) {
                         $config = $accounts[$stub];
                         $symbolmap = (isset($config['symbolmap']) ? $config['symbolmap'] : []);
                         $defaultsymbol = (isset($symbolmap['default']) ? $symbolmap['default'] : null);
@@ -196,6 +196,8 @@
                         case 'FLUSHCACHE'   :   $result = cache::flush(0, (isset($this->params['permanent']) ? (bool) $this->params['permanent'] : false));
                                                 break;
                         case 'WHITELIST'    :   $result = whitelist::manage($this->params);
+                                                break;
+                        case 'SYMBOLMAP'    :   $result = symbolmap::manage(requiredParams($this->params,['exchange']));
                                                 break;
                         case 'UNITTESTS'    :   $result = unitTests::runTests(requiredParams($this->params,['group']));
                                                 break;
