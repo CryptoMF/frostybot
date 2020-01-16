@@ -139,5 +139,12 @@ maximum position size (which we wanted).</li>
 <li>added support for stoploss and takeprofit orders.</li>
 </ul>
 </td>
-  </tr>
+<tr>
+    <td>Current</td>
+    <td><ul>
+<li>added symbolmap command to configure symbol mappings for each exchange</li>
+<li>optimized market data passthrough to the normalizers</li>
+<li>stop loss and take profit orders now return an orderObject instead of an array</li>
+      </ul>
+</tr>
 </table>
