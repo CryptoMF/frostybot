@@ -4,7 +4,11 @@
 
     class normalizer_deribit extends normalizer_base {
 
-        public $orderSizing = 'quote';          // Base or quote
+        public $orderSizing = 'quote';                  // Base or quote
+        public $ccxtParams = [
+            'fetch_orders' => ['type'=>'any']
+        ];
+        public $cancelAllOrdersParams = [];
 
         // Get current balances
         public function fetch_balance($data) {
@@ -173,40 +177,42 @@
             return $result;
         }
 
-        // Create a stop loss order
-        public function create_stoploss($symbol, $direction, $size, $trigger, $price = null, $reduce = true) {
-            $params = [
-                'instrument' => $symbol,
-                'amount' => $size * 10,
-                'type' => (is_null($price) ? 'stop_market' : 'stop_limit'),
-                'stopPx' => $trigger,
-                'reduceOnly' =>  $reduce,
-                'execInst' => 'index_price'
+        // Create parameters for order
+        public function order_params($params) {
+            $typeMap = [
+                'limit'     =>  'limit',
+                'market'    =>  'market',
+                'sllimit'   =>  'stop_limit',
+                'slmarket'  =>  'stop_market',
+                'tplimit'   =>  'limit',    // Deribit does not support take profit orders
+                'tpmarket'  =>  'limit'     // Deribit does not support take profit orders
             ];
-            if (!is_null($price)) {
-                $params['price'] = $price;
-            }
-            if ($direction == "sell") {
-                return $this->ccxt->private_post_sell($params);
-            } else {
-                return $this->ccxt->private_post_buy($params);
-            }
-        }
-
-        // Create a take profit order (on Deribit there is no specific take profit order type, so a standard limit order is used)
-        public function create_takeprofit($symbol, $direction, $size, $trigger, $reduce = true) {
-            $params = [
-                'instrument' => $symbol,
-                'amount' => $size * 10,
-                'price' => $trigger,
-                'type' => 'limit',
-                'reduce_only' =>  $reduce
+            $result = [
+                'symbol'    => $params['symbol'],
+                'type'      => $typeMap[$params['type']],
+                'side'      => $params['side'],
+                'amount'    => $params['amount'],
+                'price'     => isset($params['price']) ? $params['price'] : null,
+                'params'    => []
             ];
-            if ($direction == "sell") {
-                return $this->ccxt->private_post_sell($params);
-            } else {
-                return $this->ccxt->private_post_buy($params);
+            if (!in_array($params['type'],['limit','market'])) {
+                $result['type']   = strpos($params['type'],'limit') !== false ? 'limit' : 'market';
+                $result['params'] = [
+                    'type'   =>  $typeMap[$params['type']]
+                ];
+                if (substr($params['type'],0,2) == 'sl') {
+                    $result['price'] = isset($params['stopprice']) ? $params['stopprice'] : null;
+                    $result['params']['stopPx']   = $params['stoptrigger'];
+                    $result['params']['reduceOnly'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
+                    $result['params']['execInst'] = 'index_price';
+                }
+                if (substr($params['type'],0,2) == 'tp') {
+                    $result['price'] = isset($params['profitprice']) ? $params['profitprice'] : $params['profittrigger'];
+                    $result['params']['reduceOnly'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
+                    $result['params']['execInst'] = 'index_price';
+                }
             }
+            return $result;
         }
 
         // Parse order result
@@ -214,67 +220,21 @@
             if ((is_object($order)) && (get_class($order) == 'orderObject')) {
                 return $order;
             }
-            if (isset($order['result'])) {
-                if (isset($order['result']['order'])) {
-                    $order = $order['result']['order'];  // Fix some inconsistency in the API
-                } else {
-                    $order = $order['result'];  // Fix some inconsistency in the API
-                }
-            }
-            $market = $this->get_market_by_symbol($order['instrument']);
-            $id = $order['orderId'];
-            $timestamp = strtotime($order['created']);
-            $type = str_replace('_','',strtolower($order['type']));
-            $direction = (strtolower($order['direction']) == 'buy' ? 'long' : 'short');
+            $market = $this->get_market_by_symbol($order['symbol']);
+            $id = $order['id'];
+            $timestamp = strtotime($order['timestamp'] / 1000);
+            $type = strtolower($order['type']);
+            $direction = (strtolower($order['side']) == 'buy' ? 'long' : 'short');
             $price = (isset($order['price']) ? $order['price'] : 1);
-            $trigger = (isset($order['stopPx']) ? $order['stopPx'] : null);
-            if ($type == "stopmarket") { $price = $trigger; }
-            $sizeBase = $order['amount'] / $price;
-            $sizeQuote = $order['amount'];
-            $filledBase = (isset($order['filledAmount']) ? $order['filledAmount'] / $price : 0);
-            $filledQuote = (isset($order['filledAmount']) ? $order['filledAmount'] : 0);
-            $status = (strtolower($order['state']) == 'untriggered' ? 'open' : strtolower($order['state']));
+            $trigger = (isset($order['info']['stopPx']) ? $order['info']['stopPx'] : null);
+            $sizeBase = ($order['amount'] * $market->contract_size) / $price;
+            $sizeQuote = ($order['amount'] * $market->contract_size);
+            $filledBase = ($order['filled'] * $market->contract_size) / $price;
+            $filledQuote = ($order['filled'] * $market->contract_size);
+            $status = $order['status'] == 'canceled' ? 'cancelled' : ($order['status'] == 'untriggered' ? 'open' : $order['status']);
             $orderRaw = $order;
             return new orderObject($market,$id,$timestamp,$type,$direction,$price,$trigger,$sizeBase,$sizeQuote,$filledBase,$filledQuote,$status,$orderRaw);
         }
-        
-        // Get list of orders from exchange
-        public function fetch_orders($onlyOpen = false) {
-            $markets = $this->markets;
-            $ordersHistory = ($onlyOpen === true ? ['result' => []] : $this->ccxt->private_get_orderhistory());
-            $ordersCurrent = [];
-            $orders = $ordersHistory['result'];
-            foreach ($this->markets as $market) {     // What an absolutely shyte API...
-                $symbol = $market->symbol;
-                $marketOrders = $this->ccxt->private_get_getopenorders(['type'=>'any','instrument'=>$symbol]);
-                $orders = array_merge($orders, $marketOrders['result']);
-            }
-            $result = [];
-            foreach ($orders as $order) {
-                $result[] = $this->parse_order($order);
-            }
-            return $result;
-        }
-
-        // Cancel all orders
-        // The deribit API implementation is buggy AF. It's safer to use the default of cycling through each open order and cancelling it.
-        // Will have to test some more and see what the issue is, but right now it will not cancel order for all symbols if symbol is not provided.
-        /*
-        public function cancel_all_orders($symbol = null) { 
-            if (!is_null($symbol)) {
-                $result = $this->ccxt->private_post_cancelall(['instrument'=>$symbol]);
-            } else {
-                $result = $this->ccxt->private_post_cancelall(['type'=>'futures']);
-            }
-            if ((isset($result['success'])) && ($result['success'] === true)) {
-                return true;
-            } else {
-                logger::error($result['result']);
-                return false;
-            }
-        }
-        */
-
 
     }
 

@@ -5,6 +5,8 @@
     class normalizer_bitmex extends normalizer_base {
 
         public $orderSizing = 'quote';          // Base or quote
+        public $ccxtParams = [
+        ];
 
         // Get current balances
         public function fetch_balance($data) {
@@ -133,38 +135,39 @@
             return $result;
         }
 
-        // Create a stop loss order
-        public function create_stoploss($symbol, $direction, $size, $trigger, $price = null, $reduce = true) {
-            $params = [
-                'symbol' => $symbol,
-                'side' => ucfirst($direction),
-                'orderQty' => $size,
-                'ordType' => 'Stop',
-                'stopPx' => $trigger,
-                'price' => $price,
-                'execInst' => ($reduce == true ? 'ReduceOnly' : 'Close'),
+        // Create parameters for order
+        public function order_params($params) {
+            $typeMap = [
+                'limit'     =>  'Limit',
+                'market'    =>  'Market',
+                'sllimit'   =>  'StopLimit',
+                'slmarket'  =>  'Stop',
+                'tplimit'   =>  'Limit',    // Bitmex does not support take profit orders
+                'tpmarket'  =>  'Limit'     // Bitmex does not support take profit orders
             ];
-            if (is_null($price)) {
-                $result = $this->ccxt->private_post_order($params);
-            } else {
-                $params['ordType'] = 'StopLimit';
-                $result = $this->ccxt->private_post_order($params);
+            $result = [
+                'symbol'    => $params['symbol'],
+                'type'      => $typeMap[$params['type']],
+                'side'      => $params['side'],
+                'amount'    => $params['amount'],
+                'price'     => isset($params['price']) ? $params['price'] : null,
+                'params'    => []
+            ];
+            if (!in_array($params['type'],['limit','market'])) {
+                $result['type']   = strpos($params['type'],'limit') !== false ? 'limit' : 'market';
+                $result['params'] = [
+                    'ordType'   =>  $typeMap[$params['type']]
+                ];
+                if (substr($params['type'],0,2) == 'sl') {
+                    $result['price'] = isset($params['stopprice']) ? $params['stopprice'] : null;
+                    $result['params']['stopPx']   = $params['stoptrigger'];
+                    $result['params']['execInst'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? 'ReduceOnly' : 'Close';
+                }
+                if (substr($params['type'],0,2) == 'tp') {
+                    $result['price'] = isset($params['profitprice']) ? $params['profitprice'] : $params['profittrigger'];
+                }
             }
-            return $this->parse_order($result);
-        }
-
-        // Create a take profit order (Bitmex take profit orders work more like stop orders, so if order to keep things consistent, I've chosen to just use limit orders)
-        public function create_takeprofit($symbol, $direction, $size, $trigger, $reduce = true) {
-            $params = [
-                'symbol' => $symbol,
-                'side' => ucfirst($direction),
-                'orderQty' => $size,
-                'ordType' => 'Limit',
-                'price' => $trigger,
-                //'execInst' => ($reduce == true ? 'ReduceOnly' : 'Close'),  // This breaks if you don't already have an open position
-            ];
-            $result = $this->ccxt->private_post_order($params);
-            return $this->parse_order($result);
+            return $result;
         }
 
         // Parse order result
@@ -172,70 +175,21 @@
             if ((is_object($order)) && (get_class($order) == 'orderObject')) {
                 return $order;
             }
-            $market = $this->get_market_by_id($order['symbol']);
-            $id = $order['orderID'];
-            $timestamp = strtotime($order['timestamp']);
-            $type = strtolower($order['ordType']);
+            $market = $this->get_market_by_symbol($order['symbol']);
+            $id = $order['id'];
+            $timestamp = strtotime($order['timestamp'] / 1000);
+            $type = strtolower($order['type']);
             $direction = (strtolower($order['side']) == 'buy' ? 'long' : 'short');
             $price = (isset($order['price']) ? $order['price'] : 1);
-            $trigger = (isset($order['stopPx']) ? $order['stopPx'] : null);
-            $sizeBase = $order['orderQty'] / $price;
-            $sizeQuote = $order['orderQty'];
-            $filledBase = $order['cumQty'] / $price;
-            $filledQuote = is_null($order['cumQty']) ? 0 : $order['cumQty'];
-            $status = ((strtolower($order['ordStatus']) == 'new') ? 'open' : strtolower($order['ordStatus']));
+            $trigger = (isset($order['info']['stopPx']) ? $order['info']['stopPx'] : null);
+            $sizeBase = $order['amount'] / $price;
+            $sizeQuote = $order['amount'];
+            $filledBase = $order['filled'] / $price;
+            $filledQuote = $order['filled'];
+            $status = $order['status'];
             $orderRaw = $order;
             return new orderObject($market,$id,$timestamp,$type,$direction,$price,$trigger,$sizeBase,$sizeQuote,$filledBase,$filledQuote,$status,$orderRaw);
-        }
-     
-        // Get list of orders from exchange
-        public function fetch_orders() {
-            $orders = $this->ccxt->private_get_order();
-            $result = [];
-            foreach ($orders as $order) {
-                $result[] = $this->parse_order($order);
-            }
-            return $result;
-        }
-
-       // Cancel order
-       public function cancel_order($id) {
-            $orders = $this->ccxt->private_get_order(['filter'=>'{"orderID":"'.$id.'"}']);
-            $status = 'unknown';
-            if (count($orders) > 0) {
-                $order = $orders[0];
-                if ($order['orderID'] == $id) {
-                    $status = ((strtolower($order['ordStatus']) == 'new') ? 'open' : strtolower($order['ordStatus']));
-                }
-            }
-            if ($status == 'open') {
-                $result = $this->ccxt->private_delete_order(['orderID'=>$id]);
-                if (isset($result[0]['ordStatus'])) {
-                    if (strtolower($result[0]['ordStatus']) == 'cancelled') {
-                        return true;
-                    }
-                }
-            } else {
-                logger::error('Cannot cancel order '.$id.': Invalid status');
-            }
-            return false;
-        }
-
-        // Cancel all orders
-        public function cancel_all_orders($symbol = null) { 
-            if (!is_null($symbol)) {
-                $market = $this->get_market_by_symbol($symbol);
-                $symbol = $market->id;
-                echo $symbol;
-                die;
-            }
-            if (!is_null($symbol)) {
-                $result = $this->ccxt->private_delete_order_all(['symbol'=>$symbol]);
-            } else {
-                $result = $this->ccxt->private_delete_order_all();
-            }
-            return true;
-        }        
+        }     
 
     }
 

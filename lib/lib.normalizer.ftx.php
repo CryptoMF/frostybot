@@ -5,6 +5,12 @@
     class normalizer_ftx extends normalizer_base {
 
         public $orderSizing = 'base';          // Base or quote
+        public $ccxtParams = [
+//            'cancel_orders' => [
+//                'conditionalOrdersOnly' => false,
+//                'limitOrdersOnly'       => false,
+//            ]
+        ];
 
         // Get current balances
         public function fetch_balance($data) {
@@ -114,35 +120,41 @@
             return $result;
         }
 
-        // Create a stop loss order
-        public function create_stoploss($symbol, $direction, $size, $trigger, $price = null, $reduce = true) {
-            $params = [
-                'market' => $symbol,
-                'side' => $direction,
-                'size' => $size,
-                'type' => 'stop',
-                'triggerPrice' => $trigger,
-                'reduceOnly' =>  $reduce,
+        // Create parameters for order
+        public function order_params($params) {
+            $typeMap = [
+                'limit'     =>  'limit',
+                'market'    =>  'market',
+                'sllimit'   =>  'stop',
+                'slmarket'  =>  'stop',
+                'tplimit'   =>  'takeProfit', 
+                'tpmarket'  =>  'takeProfit'  
             ];
-            if (!is_null($price)) {
-                $params['orderPrice'] = $price;
+            $result = [
+                'symbol'    => $params['symbol'],
+                'type'      => $typeMap[$params['type']],
+                'side'      => $params['side'],
+                'amount'    => $params['amount'],
+                'price'     => isset($params['price']) ? $params['price'] : null,
+                'params'    => []
+            ];
+            if (!in_array($params['type'],['limit','market'])) {
+                $result['type']   =  $typeMap[$params['type']];
+                $result['params'] = [
+                    'type'   =>  $typeMap[$params['type']]
+                ];
+                if (substr($params['type'],0,2) == 'sl') {
+                    $result['params']['orderPrice'] = isset($params['stopprice']) ? $params['stopprice'] : null;
+                    $result['params']['triggerPrice'] = $params['stoptrigger'];
+                    $result['params']['reduceOnly'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
+                }
+                if (substr($params['type'],0,2) == 'tp') {
+                    $result['params']['orderPrice'] = isset($params['triggerprice']) ? $params['triggerprice'] : null;
+                    $result['params']['triggerPrice'] = $params['profittrigger'];
+                    $result['params']['reduceOnly'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
+                }
             }
-            $result = $this->ccxt->private_post_conditional_orders($params);
-            return $this->parse_order($result);
-        }
-
-        // Create a take profit order
-        public function create_takeprofit($symbol, $direction, $size, $trigger, $reduce = true) {
-            $params = [
-                'market' => $symbol,
-                'side' => $direction,
-                'size' => $size,
-                'type' => 'takeProfit',
-                'triggerPrice' => $trigger,
-                'reduceOnly' =>  $reduce,
-            ];
-            $result = $this->ccxt->private_post_conditional_orders($params);
-            return $this->parse_order($result);
+            return $result;
         }
 
         // Parse order result
@@ -150,87 +162,21 @@
             if ((is_object($order)) && (get_class($order) == 'orderObject')) {
                 return $order;
             }
-            if (isset($order['result'])) {
-                $order = $order['result'];  // Fix some inconsistency in the API
-            }
-            $market = $this->get_market_by_symbol($order['future']);
+            $market = $this->get_market_by_symbol($order['symbol']);
             $id = $order['id'];
-            $timestamp = strtotime($order['createdAt']);
+            $timestamp = strtotime($order['timestamp'] / 1000);
             $type = strtolower($order['type']);
             $direction = (strtolower($order['side']) == 'buy' ? 'long' : 'short');
-            $price = (isset($order['orderPrice']) ? $order['orderPrice'] : (isset($order['price']) ? $order['price'] : (isset($order['avgFillPrice']) ? $order['avgFillPrice'] : null)));
-            $trigger = (isset($order['triggerPrice']) ? $order['triggerPrice'] : null);
-            $sizeBase = $order['size'];
-            $sizeQuote = $order['size'] * $price;
-            $filledBase = isset($order['filledSize']) ? $order['filledSize'] : 0;
-            $filledQuote = $filledBase * $price;
-            $status = ((strtolower($order['status']) == 'new') ? 'open' : strtolower($order['status']));
-            if ($type == "stop") {
-                if (is_null($price)) {
-                    $type = "stopmarket";
-                    $price = $trigger;
-                } else {
-                    $type = "stoplimit";
-                }
-            }
+            $price = (isset($order['price']) ? $order['price'] : 1);
+            $trigger = (isset($order['info']['triggerPrice']) ? $order['info']['triggerPrice'] : null);
+            $sizeBase = $order['amount'];
+            $sizeQuote = $order['amount'] * $price;
+            $filledBase = $order['filled'];
+            $filledQuote = $order['filled'] * $price;
+            $status = $order['status'];
             $orderRaw = $order;
             return new orderObject($market,$id,$timestamp,$type,$direction,$price,$trigger,$sizeBase,$sizeQuote,$filledBase,$filledQuote,$status,$orderRaw);
         }
-     
-        // Get list of orders from exchange
-        public function fetch_orders($markets, $onlyOpen = false) {
-            if ($onlyOpen) {
-                $ordersNormal = $this->ccxt->private_get_orders();
-            } else {
-                $ordersNormal = $this->ccxt->private_get_orders_history();
-            }
-            $ordersTrigger = $this->ccxt->private_get_conditional_orders();
-            $orders = array_merge($ordersNormal['result'],$ordersTrigger['result']);
-            $result = [];
-            foreach ($orders as $order) {
-                $result[] = $this->parse_order($order);
-            }
-            return $result;
-        }
-
-        // Cancel order
-        public function cancel_order($id) {
-            $normalOrders = $this->ccxt->private_get_orders();
-            $triggerOrders = $this->ccxt->private_get_conditional_orders();
-            $orders = array_merge($normalOrders['result'],$triggerOrders['result']);
-            foreach($orders as $order) {
-                if ($order['id'] == $id) {
-                    if (array_key_exists('triggerPrice',$order)) {
-                        $result = $this->ccxt->private_delete_conditional_orders_order_id(['order_id'=>$id]);
-                    } else {
-                        $result = $this->ccxt->private_delete_orders_order_id(['order_id'=>$id]);
-                    }
-                    if ((isset($result['success'])) && ($result['success'] === true)) {
-                        return true;
-                    } else {
-                        logger::error($result['result']);
-                        return false;
-                    }
-                }
-            }
-            return false;
-        }
-
-        // Cancel all orders
-        public function cancel_all_orders($symbol = null) { 
-            if (!is_null($symbol)) {
-                $result = $this->ccxt->private_delete_orders(['market'=>$symbol]);
-            } else {
-                $result = $this->ccxt->private_delete_orders();
-            }
-            if ((isset($result['success'])) && ($result['success'] === true)) {
-                return true;
-            } else {
-                logger::error($result['result']);
-                return false;
-            }
-        }
-
 
     }
 

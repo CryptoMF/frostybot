@@ -155,10 +155,13 @@
 
         // Get order data for a specific order ID
         public function order($params) {
-            $id = is_array($params) ? $params['id'] : $params;
-            $orders = $this->orders();
+            if ($this->ccxt->has['fetchOrder']) {
+                $rawOrder = $this->ccxt->fetch_order($params['id'],$params['symbol']);
+                return $this->normalizer->parse_order($rawOrder);
+            }
+            $orders = $this->orders(['symbol' => $params['symbol']]);
             foreach ($orders as $order) {
-                if ($order->id == $id) {
+                if ($order->id == $params['id']) {
                     return $order;
                 }
             }
@@ -166,8 +169,8 @@
             return false;
         }
 
-        // Get all orders
-        public function orders($settings = []) {
+        // Filter list of orders
+        public function filter_orders($orders, $settings) {
             $filters = [];
             if (isset($settings['id'])) { $filters['id'] = $settings['id']; }
             if (isset($settings['symbol'])) { $filters['symbol'] = $settings['symbol']; }
@@ -179,30 +182,56 @@
             } else {
                 $onlyOpen = false;
             }
+            if (count($filters) == 0) {
+                return $orders;
+            }
             $result = [];
-            $orders = $this->normalizer->fetch_orders($onlyOpen);
             foreach ($orders as $order) {
-                if (count($filters) > 0) {
-                    $filter = false;
-                    foreach($filters as $key => $value) {
-                        if ($key == 'symbol') {
-                            if ($order->market->symbol !== $value) {
-                                $filter = true;
-                            }    
-                        } else {
-                            if ($order->$key !== $value) {
-                                $filter = true;
-                            }
-                        }
-                    }
-                    if (!$filter) {
-                        $result[] = $order;                                
-                    }
-                } else {
-                    $result[] = $order;
+                $filter = false;
+                foreach($filters as $key => $value) {
+                    $filter = ($key == 'symbol') ? ($order->market->symbol !== $value) : ($order->$key !== $value);
+                }
+                if (!$filter) {
+                    $result[] = $order;                                
                 }
             }
             return $result;
+        }
+
+        // Get all orders
+        public function orders($settings = []) {
+            $symbol = $settings['symbol'];
+            $filters = [];
+            $fetchParams = isset($this->normalizer->ccxtParams['fetch_orders']) ? $this->normalizer->ccxtParams['fetch_orders'] : [];
+            if (isset($settings['id'])) { $filters['id'] = $settings['id']; }
+            if (isset($settings['symbol'])) { $filters['symbol'] = $settings['symbol']; }
+            if (isset($settings['type'])) { $filters['type'] = $settings['type']; }
+            if (isset($settings['direction'])) { $filters['direction'] = $settings['direction']; }
+            if (isset($settings['status'])) { 
+                $onlyOpen = ($settings['status'] == "open" ? true : false); 
+            } else {
+                $onlyOpen = false;
+            }
+            if (($onlyOpen) && ($this->ccxt->has['fetchOpenOrders'])) {
+                $rawOrders = $this->ccxt->fetch_open_orders($symbol, null, null, $fetchParams);
+            } else {
+                if ($this->ccxt->has['fetchOrders']) {
+                    $rawOrders = $this->ccxt->fetch_orders($symbol, null, null, $fetchParams);
+                } else {
+                    $rawOrders = [];
+                    if ($this->ccxt->has['fetchOpenOrders']) {
+                        $rawOrders = array_merge($rawOrders,$this->ccxt->fetch_open_orders($symbol, null, null, $fetchParams));
+                    }
+                    if ($this->ccxt->has['fetchClosedOrders']) {
+                        $rawOrders = array_merge($rawOrders,$this->ccxt->fetch_closed_orders($symbol, null, null, $fetchParams));
+                    }
+                }
+            }
+            $orders = [];
+            foreach ($rawOrders as $rawOrder) {
+                $orders[] = $this->normalizer->parse_order($rawOrder);
+            }
+            return $this->filter_orders($orders,$settings);
         }
 
         // Cancel order(s)
@@ -210,33 +239,31 @@
             $id =  (isset($params['id']) ? $params['id'] : null);
             $symbol = (isset($params['symbol']) ? $params['symbol'] : null);
             if ($id == 'all') {
-                if (method_exists($this->normalizer,'cancel_all_orders')) {
-                    return $this->normalizer->cancel_all_orders($symbol);
-                } else {
-                    $orders = ((!is_null($symbol)) ? $this->orders(['status'=>'open','symbol'=>$symbol]) : $this->orders(['status'=>'open']));
-                    foreach($orders as $order) {
-                        $result = $this->cancel(['id'=>$order->id]);
-                        if (!in_array($result->status,['canceled','cancelled'])) {       // Deribit don't know how to spell cancelled
-                            logger::error('Not all open orders were able to be cancelled');
-                            return false;
+                //$cancelParams = isset($this->normalizer->ccxtParams['cancel_orders']) ? $this->normalizer->ccxtParams['cancel_orders'] : [];
+                $results = [];
+                if ($this->ccxt->has['cancelAllOrders']) {
+                    $orders = $this->ccxt->cancel_all_orders($symbol);
+                    if (is_array($orders)) {
+                        foreach ($orders as $order) {
+                            $results[] = $this->normalizer->parse_order($this->ccxt->cancel_order($order->id, $order->symbol));
                         }
-
+                    } else {
+                        if (is_array($orders)) {
+                            foreach ($orders as $key => $order) {
+                                $orders[$key]->status = 'canceled';
+                            }
+                            $results = $orders;
+                        }
                     }
-                    return true;
-                }
-            } else {
-                if (method_exists($this->normalizer,'cancel_order')) {
-                    $result = $this->normalizer->cancel_order($id);
-                    return (object) $result;
                 } else {
-                    $order = $this->order($id);
-                    if (!is_null($order)) {
-                        if ($order->status == "open") {
-                            $result = $this->ccxt->cancel_order($id);
-                            return (object) $result;
-                        } 
+                    $orders = $this->orders(array_merge($params,['status'=>'open']));
+                    foreach ($orders as $order) {
+                        $results[] = $this->cancel(['id'=>$order->id, 'symbol'=>$order->market->symbol]);
                     }
                 }
+                return $results;
+            } else {
+                return $this->normalizer->parse_order($this->ccxt->cancel_order($id, $symbol));
             }
             logger::error('Failed to cancel order: '.$id);
             return false;
@@ -284,11 +311,10 @@
         }
 
         // Convert USD value to number of contracts, depending of if exchange uses base or quote price and what the acual contract size is per contract
-        private function convert_size($usdSize, $params) {
-            $symbol = $params['symbol'];
+        private function convert_size($usdSize, $symbol, $price = null) {
             $market = $this->market(['symbol' => $symbol]);
             $contractSize = $market->contract_size;                                                      // Exchange contract size in USD
-            $price = isset($params['price']) ? $params['price'] : (($market->bid + $market->ask) / 2);   // Use price if given, else justuse a rough market estimate
+            $price = (!is_null($price)) ? $price : (($market->bid + $market->ask) / 2);             // Use price if given, else just use a rough market estimate
             if ($this->normalizer->orderSizing == 'quote') {                                             // Exchange uses quote price
                 $orderSize = round($usdSize / $contractSize,0);
             } else {                                                                                     // Exchange uses base price
@@ -313,10 +339,10 @@
                 $multiplier = str_replace('%','',strtolower($size)) / 100;
                 $size = $this->total_balance_usd() * $multiplier;
             }
-            $requestedSize = $this->convert_size($size, $params);
+            $requestedSize = $this->convert_size($size, $symbol, $price);                               // Requested size in contracts
             $position = $this->position(['symbol' => $symbol, 'suppress' => true]);
-            $positionSize = $this->position_size($symbol);                                               // Position size in contracts
-            $currentDir = $this->position_direction($symbol);                                            // Current position direction (long or short)
+            $positionSize = $this->position_size($symbol);                                              // Position size in contracts
+            $currentDir = $this->position_direction($symbol);                                           // Current position direction (long or short)
             if ($positionSize != 0) {                                                                   // If already in a position
                 if ($direction != $currentDir) {
                     $requestedSize += $positionSize;                                                    // Flip position if required
@@ -330,38 +356,44 @@
                     }
                 }
             }
-  
+            $side = ($direction == "long" ? "buy" : "sell");
             if ($requestedSize > 0) {
+                $orderParams = [
+                    'symbol' => $symbol,
+                    'type'   => $type,
+                    'amount' => $requestedSize, 
+                    'side'   => $side,
+                    'price'  => $price
+                ];
+                $orderResult = $this->submit_order($orderParams);
                 $balance = $this->total_balance_usd();
                 $comment = isset($params['comment']) ? $params['comment'] : 'None';
-                $rawResult = $this->ccxt->create_order($symbol, $type, ($direction == "long" ? "buy" : "sell"), abs($requestedSize), $price);
-                $orderResult = $this->normalizer->parse_order($rawResult['info']);
-                logger::info('TRADE:'.strtoupper($direction).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.($requestedSize * $market->contract_size).' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
+                logger::info('TRADE:'.strtoupper($direction).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
                 if ((isset($params['stoptrigger'])) || (isset($params['profittrigger']))) {
                     $linkedOrder = new linkedOrderObject($stub, $symbol);
                     $linkedOrder->add($orderResult);
                     // Stop loss orders
                     if (isset($params['stoptrigger'])) {
-                        $slparams = [
+                        $slParams = [
                             'symbol' => $symbol,
                             'stoptrigger' => $params['stoptrigger'],
-                            'size' => (isset($params['stopsize']) ? $params['stopsize'] : $requestedSize),
                             'stopprice' => (isset($params['stopprice']) ? $params['stopprice'] : null),
+                            'size' => (isset($params['stopsize']) ? $params['stopsize'] : $params['size']),
                             'reduce' => (isset($params['reduce']) ? $params['reduce'] : false)
                         ];
-                        $slresult = $this->stoploss($slparams);
-                        $linkedOrder->add($slresult);
+                        $slResult = $this->stoploss($slParams);
+                        $linkedOrder->add($slResult);
                     }
                     // Take profit orders
                     if (isset($params['profittrigger'])) {
-                        $slparams = [
+                        $tpParams = [
                             'symbol' => $symbol,
                             'profittrigger' => $params['profittrigger'],
-                            'size' => (isset($params['stopsize']) ? $params['stopsize'] : $requestedSize),
+                            'size' => (isset($params['profitsize']) ? $params['profitsize'] : $params['size']),
                             'reduce' => (isset($params['reduce']) ? $params['reduce'] : false)
                         ];
-                        $tpresult = $this->takeprofit($slparams);
-                        $linkedOrder->add($tpresult);
+                        $tpResult = $this->takeprofit($tpParams);
+                        $linkedOrder->add($tpResult);
                     }
                     return $linkedOrder;
                 } else {
@@ -381,27 +413,32 @@
             return $this->trade('short', $params);
         }
 
+        // Submit an order the exchange
+        public function submit_order($params) {
+            $orderParams = $this->normalizer->order_params($params);
+            list ($symbol, $type, $side, $amount, $price, $params) = array_values((array) $orderParams);
+            $rawOrderResult = $this->ccxt->create_order($symbol, $type, $side, $amount, $price, $params);
+            $parsedOrderResult = $this->normalizer->parse_order($rawOrderResult);
+            return $parsedOrderResult;
+        }
+
         // Stop Loss Orders 
         // Limit or Market, depending on if you supply the 'price' parameter or not
         // Buy or Sell is automatically determined by comparing the 'stoptrigger' price and current market price. This is a required parameter.
         public function stoploss($params) {
             $symbol = $params['symbol'];
-            $trigger = $params['stoptrigger'];
-            $market = $this->market(['symbol' => $symbol]);
-            $size = isset($params['size']) ? $params['size'] : $this->positionSize($symbol);    // Use current position size is no size is provided
-            $price = isset($params['stopprice']) ? $params['stopprice'] : null;
-            $type = is_null($price) ? 'market' : 'limit';
-            $reduce = isset($params['reduce']) ? $params['reduce'] : false;
-            $direction = ($trigger > $market->ask) ? 'buy' : ($trigger < $market->bid ? 'sell' : null);
-            if (is_null($direction)) {                                                          // Trigger price in the middle of the spread, so can't determine direction
-                logger::error('Could not determine direction of stop loss order because the trigger price is inside the spread. Adjust the trigger price and try again.');
+            $price = isset($params['stopprice']) ? $params['stopprice'] : $params['stoptrigger'];
+            $market = $this->normalizer->get_market_by_symbol($symbol);
+            $params['type'] = isset($params['stopprice']) ? 'sllimit' : 'slmarket';
+            $params['side'] = $params['stoptrigger']  > $market->ask ? 'buy' : ($params['stoptrigger'] < $market->bid ? 'sell' : null);
+            $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
+            if (is_null($params['side'])) {                                                          // Trigger price in the middle of the spread, so can't determine direction
+                logger::error('Could not determine direction of the stop loss order because the trigger price is inside the spread. Adjust the trigger price and try again.');
             }
-            if ($size > 0) {
-                $result = $this->normalizer->create_stoploss($market->id, $direction, $size, $trigger, $price, $reduce);
-                return $this->normalizer->parse_order($result);
-            } else {
+            if (!($params['amount'] > 0)) {
                 logger::error("Could not automatically determine the size of the stop loss order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
+            return $this->submit_order($params);
         }
 
         // Take Profit Orders 
@@ -409,21 +446,18 @@
         // Take profit orders are always limit orders by design
         public function takeprofit($params) {
             $symbol = $params['symbol'];
-            $trigger = $params['profittrigger'];
-            $market = $this->market(['symbol' => $symbol]);
-            $size = isset($params['size']) ? $params['size'] : $this->positionSize($symbol);    // Use current position size is no size is provided
-            $type = 'limit';
-            $reduce = isset($params['reduce']) ? $params['reduce'] : false;
-            $direction = ($trigger > $market->ask) ? 'sell' : ($trigger < $market->bid ? 'buy' : null);
-            if (is_null($direction)) {                                                          // Trigger price in the middle of the spread, so can't determine direction
-                logger::error('Could not determine direction of take profit order because the trigger price is inside the spread. Adjust the trigger price and try again.');
+            $price = isset($params['profitprice']) ? $params['profitprice'] : $params['profittrigger'];
+            $market = $this->normalizer->get_market_by_symbol($symbol);
+            $params['type'] = isset($params['profitprice']) ? 'tplimit' : 'tpmarket';
+            $params['side'] = $params['profittrigger']  > $market->ask ? 'sell' : ($params['profittrigger'] < $market->bid ? 'buy' : null);
+            $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
+            if (is_null($params['side'])) {                                                          // Trigger price in the middle of the spread, so can't determine direction
+                logger::error('Could not determine direction of the take profit order because the trigger price is inside the spread. Adjust the trigger price and try again.');
             }
-            if ($size > 0) {
-                $result = $this->normalizer->create_takeprofit($market->id, $direction, $size, $trigger, $reduce);
-                return $this->normalizer->parse_order($result);
-            } else {
+            if (!($params['amount'] > 0)) {
                 logger::error("Could not automatically determine the size of the take profit order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
+            return $this->submit_order($params);
         }
 
         // Close Position
@@ -433,18 +467,23 @@
             $orderSizing = (isset($this->normalizer->orderSizing) ? $this->normalizer->orderSizing : 'quote');
             $position = $this->position(['symbol' => $symbol, 'suppress' => true]);
             if (is_object($position)) {
-                $dir = $position->direction == 'long' ? 'sell' : ($position->direction == 'short' ? 'buy' : null);
+                $side = $position->direction == 'long' ? 'sell' : ($position->direction == 'short' ? 'buy' : null);
                 $market = $position->market;
-                $contract_size = ($orderSizing == 'quote' ? (round($position->size_quote * ($size / 100),0) / $market->contract_size) : ($position->size_base * ($size / 100)));
-                $type = 'market';
-                //$price = ($dir == "buy" ? $market->ask : $market->bid);
-                $price = null;
-                if ($contract_size > 0) {
+                $requestedSize = ($orderSizing == 'quote' ? (round($position->size_quote * ($size / 100),0) / $market->contract_size) : ($position->size_base * ($size / 100)));
+                $price = (isset($params['price']) ? $params['price'] : null);
+                $type = (is_null($price) ? 'market' : limit);
+                if ($requestedSize > 0) {
+                    $orderParams = [
+                        'symbol' => $symbol,
+                        'type'   => $type,
+                        'amount' => $requestedSize, 
+                        'side'   => $side,
+                        'price'  => $price
+                    ];
+                    $orderResult = $this->submit_order($orderParams);
                     $balance = $this->total_balance_usd();
                     $comment = isset($params['comment']) ? $params['comment'] : 'None';
-                    $rawResult = $this->ccxt->create_order($symbol, $type, $dir, abs($contract_size), $price);
-                    $orderResult = $this->normalizer->parse_order($rawResult['info']);
-                    logger::info('TRADE:CLOSE | Symbol: '.$symbol.' | Direction: '.$dir.' | Type: '.$type.' | Size: '.($contract_size * $market->contract_size).' | Price: '.(is_null($price) ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
+                    logger::info('TRADE:CLOSE | Symbol: '.$symbol.' | Direction: '.$side.' | Type: '.$type.' | Size: '.($requestedSize * $market->contract_size).' | Price: '.(is_null($price) ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
                     return $orderResult;
                 }
             } else {
