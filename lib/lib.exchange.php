@@ -250,7 +250,7 @@
                     } else {
                         if (is_array($orders)) {
                             foreach ($orders as $key => $order) {
-                                $orders[$key]->status = 'canceled';
+                                $orders[$key]->status = 'cancelled';
                             }
                             $results = $orders;
                         }
@@ -258,7 +258,7 @@
                 } else {
                     $orders = $this->orders(array_merge($params,['status'=>'open']));
                     foreach ($orders as $order) {
-                        $results[] = $this->cancel(['id'=>$order->id, 'symbol'=>$order->market->symbol]);
+                        $results[] = $this->normalizer->parse_order($this->ccxt->cancel_order($order->id, $order->market->symbol));
                     }
                 }
                 return $results;
