@@ -19,11 +19,11 @@
         public function __construct($exchange, $options) {
             $this->settings = array_merge($this->settings, $options);
             $this->exchange = strtolower($exchange);
-            $class = "\\ccxt\\" . strtolower($exchange);
-            $normalizer = 'normalizer_'.strtolower($exchange);
-            if (class_exists($class)) {
+            $class = "\\ccxt\\" .$this->exchange.(class_exists("\\ccxt\\" .$this->exchange."_frostybot") ? "_frostybot" : "");
+            $normalizer = 'normalizer_'.strtolower(str_replace("_frostybot","",$exchange));
+            if (class_exists($class)) {  
                 $this->ccxt = new $class($options);
-            }
+            } 
             if (class_exists($normalizer)) {
                 $this->normalizer = new $normalizer($this->ccxt, $options);
             }

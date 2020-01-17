@@ -18,6 +18,9 @@
     foreach(glob('lib/lib.normalizer.*.php') as $normalizer) {      // Exchange output normalizers
         include($normalizer);               
     }
+    foreach(glob('lib/lib.ccxt.*.php') as $ccxt) {                  // CCXT exchange extensions.
+        include($ccxt);               
+    }
     include('lib/lib.exchange.php');        // Main exchange wrapper
     include('lib/lib.symbolmap.php');       // Symbol mapping manager
     include('lib/lib.unittests.php');       // Development test units

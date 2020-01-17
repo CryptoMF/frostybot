@@ -25,7 +25,7 @@ class ftx extends Exchange {
                 'referral' => 'https://ftx.com/#a=1623029',
             ),
             'has' => array (
-                'cancelAllOrders' => true,            
+                'cancelAllOrders' => true,
                 'fetchClosedOrders' => false,
                 'fetchCurrencies' => true,
                 'fetchDepositAddress' => true,
@@ -34,7 +34,7 @@ class ftx extends Exchange {
                 'fetchMyTrades' => true,
                 'fetchOHLCV' => true,
                 'fetchOpenOrders' => true,
-                'fetchOrder' => true,         
+                'fetchOrder' => true,
                 'fetchOrderBook' => true,
                 'fetchOrders' => true,
                 'fetchTicker' => true,
@@ -84,7 +84,6 @@ class ftx extends Exchange {
                         'orders/{order_id}',
                         'orders/by_client_id/{client_order_id}',
                         'conditional_orders', // ?market={market}
-                        'conditional_orders/history', // ?market={market}           // Missing endpoint added for FrostyBot
                         'fills', // ?market={market}
                         'funding_payments',
                         'lt/balances',
@@ -934,24 +933,7 @@ class ftx extends Exchange {
         $request = array (
             'order_id' => intval ($id),
         );
-
-        // $response = $this->privateDeleteOrdersOrderId (array_merge ($request, $params));
-            
-        // -------------------- Frostybot Change ---------------------------
-        //  Include condtional orders to align with other exchanges
-        // ------------------------------------------------------------------
-        $order = $this->fetch_order($id, $symbol);
-        if (in_array($order['type'],['limit','market'])) {
-            $response = $this->privateDeleteOrdersOrderId (array_merge ($request, $params));
-        } else {
-            $response = $this->privateDeleteConditionalOrdersOrderId (['order_id'=>$id]);
-        }
-        if ($response['success'] == true) {
-            $order['info']['status'] = "cancelled";
-            $order['status'] = "cancelled";
-            return $order;
-        }
-        // ------------------------------------------------------------------
+        $response = $this->privateDeleteOrdersOrderId (array_merge ($request, $params));
         //
         //     {
         //         "success" => true,
@@ -969,14 +951,11 @@ class ftx extends Exchange {
             'conditionalOrdersOnly' => false, // cancel conditional orders only
             'limitOrdersOnly' => false, // cancel existing limit orders (non-conditional orders) only
         );
-        
         $market = null;
         if ($symbol !== null) {
             $market = $this->market ($symbol);
             $request['market'] = $market['id'];
         }
-        
-        $orders = $this->fetch_open_orders($symbol);
         $response = $this->privateDeleteOrders (array_merge ($request, $params));
         $result = $this->safe_value($response, 'result', array());
         //
@@ -985,9 +964,6 @@ class ftx extends Exchange {
         //         "$result" => "Orders queued for cancelation"
         //     }
         //
-        if ((is_array($result)) && ($result['success'] == true)) {
-            return $orders;
-        }
         return $result;
     }
 
@@ -996,43 +972,7 @@ class ftx extends Exchange {
         $request = array (
             'order_id' => $id,
         );
-
-        //$response = $this->privateGetOrdersOrderId (array_merge ($request, $params));
-
-        // -------------------- Frostybot Change ---------------------------
-        //  Include condtional orders in list to align with other exchanges
-        // ------------------------------------------------------------------
-        try {
-            $response = $this->privateGetOrdersOrderId (array_merge ($request, $params));
-        } catch (Exception $e) {
-            $rawResults = $this->privateGetConditionalOrders (['market'=>$symbol]);
-            if ($rawResults['success']) {
-                foreach ($rawResults['result'] as $rawResult) {
-                    if (($rawResult['id'] == $id) && ($rawResult['market'] == $symbol)) {
-                        $response = [
-                            'success'   =>  true,
-                            'result'    =>  $rawResult
-                        ];
-                        break;
-                    }
-                }
-            }
-            if (!isset($response)) {
-                $rawResults = $this->privateGetConditionalOrdersHistory (['market'=>$symbol]);
-                if ($rawResults['success']) {
-                    foreach ($rawResults['result'] as $rawResult) {
-                        if (($rawResult['id'] == $id) && ($rawResult['market'] == $symbol)) {
-                            $response = [
-                                'success'   =>  true,
-                                'result'    =>  $rawResult
-                            ];
-                            break;
-                        }
-                    }
-                }    
-            }
-        }
-        // ------------------------------------------------------------------
+        $response = $this->privateGetOrdersOrderId (array_merge ($request, $params));
         //
         //     {
         //         "success" => true,
@@ -1069,18 +1009,6 @@ class ftx extends Exchange {
             $request['market'] = $market['id'];
         }
         $response = $this->privateGetOrders (array_merge ($request, $params));
-        // -------------------- Frostybot Change ---------------------------
-        //  Include condtional orders in list to align with other exchanges
-        // ------------------------------------------------------------------
-        if ($response['success'] == true) {
-            $conditional = $this->privateGetConditionalOrders (array_merge ($request, $params));
-            if ($conditional['success'] == true) {
-                foreach ($conditional['result'] as $order) {
-                    $response['result'][] = $order;
-                }
-            }
-        }
-        // ------------------------------------------------------------------
         //
         //     {
         //         "success" => true,
@@ -1125,18 +1053,6 @@ class ftx extends Exchange {
             $request['start_time'] = intval ($since / 1000);
         }
         $response = $this->privateGetOrdersHistory (array_merge ($request, $params));
-        // -------------------- Frostybot Change ---------------------------
-        //  Include condtional orders in list to align with other exchanges
-        // ------------------------------------------------------------------
-        if ($response['success'] == true) {
-            $conditional = $this->privateGetConditionalOrders (array_merge ($request, $params));
-            if ($conditional['success'] == true) {
-                foreach ($conditional['result'] as $order) {
-                    $response['result'][] = $order;
-                }
-            }
-        }
-        // ------------------------------------------------------------------
         //
         //     {
         //         "success" => true,
