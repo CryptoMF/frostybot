@@ -22,7 +22,7 @@ class ftx_frostybot extends ftx {
             $order['status'] = $status;
         } else {
             foreach($order as $key => $val) {
-                $order[$key] = $this->update_order_status($val, "cancelled");
+                $order[$key] = $this->update_order_status($val, $status);
             }
         }
         return $order;
