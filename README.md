@@ -141,9 +141,17 @@ Here is an example of a Tradingview alert showing multiple commands:
 
 ![TV Alert](https://i.imgur.com/p8YFTah.png)
      
-Other than Tradingview firing off webhooks, you can also communicate manually with Frostybot using the commandline interface (CLI). Here are some CLI examples that you can try out.
- 
+Once you have found a winning strategy (or made your own using Pinescript on Tradingview), you can set up multiple alerts for long, short, and close (tapeprofit/stoploss) orders and let Tradingview and Frostybot fully automate your trading!
+
+*Sample study in Tradingview shoring buy, sell and tape profit alert points*
+![TV Strategy](https://i.imgur.com/isAkusb.png)
+
+*List of tradingview alerts showing long, short and take profit orders*
+![List of alert](https://i.imgur.com/qM4OwFJ.png)
+     
 **CLI Examples:** 
+
+Other than Tradingview firing off webhooks, you can also communicate manually with Frostybot using the commandline interface (CLI). Here are some CLI examples that you can try out. 
 
     ./frostybot deribit:long symbol=BTC-PERPETUAL size=1000     ($1000 market buy on Deribit BTC-PERPETUAL)
     ./frostybot ftx:short symbol=BTC-PERP size=2000 price=7600  ($2000 limit sell at $7600 on FTX BTC-PERP)
