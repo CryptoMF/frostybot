@@ -147,6 +147,7 @@ Once you have found a winning strategy (or made your own using Pinescript on Tra
 ![TV Strategy](https://i.imgur.com/isAkusb.png)
 
 *List of tradingview alerts showing long, short and take profit orders*
+
 ![List of alert](https://i.imgur.com/qM4OwFJ.png)
      
 **CLI Examples:** 
