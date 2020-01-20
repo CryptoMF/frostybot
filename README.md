@@ -141,7 +141,7 @@ Here is an example of a Tradingview alert showing multiple commands:
 
 ![TV Alert](https://i.imgur.com/p8YFTah.png)
      
-Once you have found a winning strategy (or made your own using Pinescript on Tradingview), you can set up multiple alerts for long, short, and close (tapeprofit/stoploss) orders and let Tradingview and Frostybot fully automate your trading!
+Once you have found a winning strategy (or made your own using Pinescript on Tradingview), you can set up multiple alerts for long, short, and close (takeprofit/stoploss) orders and let Tradingview and Frostybot fully automate your trading!
 
 *Sample study in Tradingview showing buy, sell and take profit alert points*
 
