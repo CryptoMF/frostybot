@@ -89,7 +89,7 @@ Its recommended to use sub-accounts to limit risk. First follow the instructions
     
       deribitdemo:long size=5000 price=8000 symbol=BTC-PERPETUAL  (This example provides the symbol on the commandline)
       deribitdemo:short size=5000 price=8000 symbol=BTCUSD        (This example uses a symbol mapping in the config to convert BTCUSD to BTC-PERPETUAL)
-      deiribitdemo:short size=5000 price=8000                     (This example uses the "default" symbol mapping in the config which is mapped to BTC-PERPETUAL)    
+      deribitdemo:short size=5000 price=8000                     (This example uses the "default" symbol mapping in the config which is mapped to BTC-PERPETUAL)    
     
 *Note:* The order size is always in USD, and the symbol is required for most exchange-specific commands (unless a default symbol mapping has been provided in the config file, in which case that default symbol will be used if no symbol is provided in the command).
 
