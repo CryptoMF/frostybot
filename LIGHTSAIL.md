@@ -72,7 +72,7 @@ This document is a quick and dirty walkthrough to show you how to set up a Amazo
 
 ### Configure Frostybot
 
-* The URL that you used now will be the same URL you enter in the Webhook URL section of your Tradingview alerts. You can now proceed to configure your preferred exchange API keys in /var/www/html/frostybot/cfg/cfg.config.php - Please continue [here](https://github.com/CryptoMF/frostybot/blob/master/INSTALLATION.md#post-installation-configuration) for more information on configuring your bot and setting up Tradingview webhooks.
+* The URL that you used now will be the same URL you enter in the Webhook URL section of your Tradingview alerts. You can now proceed to configure your preferred exchange API keys - Please continue [here](https://github.com/CryptoMF/frostybot/blob/master/INSTALLATION.md#post-installation-configuration) for more information on configuring your bot and setting up Tradingview webhooks.
   
   
   
