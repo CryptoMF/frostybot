@@ -330,6 +330,14 @@
             $market = $this->market(['symbol' => $symbol]);
             $size = $params['size'];
             $price = isset($params['price']) ? $params['price'] : null;
+            if (!is_null($price)) {
+                if ((string) $price[0] == "+") {                  // Price expressed in relation to market price
+                    $price = $market->bid + abs($price);
+                }
+                if ((string) $price[0] == "-") {                  // Price expressed in relation to market price
+                    $price = $market->ask - abs($price);
+                }
+            }
             $type = is_null($price) ? 'market' : 'limit';
             if (strtolower(substr($size,-1)) == 'x') {             // Position size given in x
                 $multiplier = str_replace('x','',strtolower($size));
@@ -427,12 +435,21 @@
         // Buy or Sell is automatically determined by comparing the 'stoptrigger' price and current market price. This is a required parameter.
         public function stoploss($params) {
             $symbol = $params['symbol'];
-            $price = isset($params['stopprice']) ? $params['stopprice'] : $params['stoptrigger'];
+            $market = $this->market(['symbol' => $symbol]);
+            $trigger = $params['stoptrigger'];
+            if ((string) $trigger[0] == "+") {                // Trigger expressed in relation to market price
+                $trigger = $market->bid + abs($trigger);
+            }
+            if ((string) $trigger[0] == "-") {                // Trigger expressed in relation to market price
+                $trigger = $market->ask - abs($trigger);
+            }
+            $price = isset($params['stopprice']) ? $params['stopprice'] : $trigger;
             $market = $this->normalizer->get_market_by_symbol($symbol);
             $params['type'] = isset($params['stopprice']) ? 'sllimit' : 'slmarket';
-            $params['side'] = $params['stoptrigger']  > $market->ask ? 'buy' : ($params['stoptrigger'] < $market->bid ? 'sell' : null);
+            $params['side'] = $trigger  > $market->ask ? 'buy' : ($trigger < $market->bid ? 'sell' : null);
             $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
-            if (is_null($params['side'])) {                                                          // Trigger price in the middle of the spread, so can't determine direction
+            $params['stoptrigger'] = $trigger;
+            if (is_null($params['side'])) {                   // Trigger price in the middle of the spread, so can't determine direction
                 logger::error('Could not determine direction of the stop loss order because the trigger price is inside the spread. Adjust the trigger price and try again.');
             }
             if (!($params['amount'] > 0)) {
@@ -446,12 +463,21 @@
         // Take profit orders are always limit orders by design
         public function takeprofit($params) {
             $symbol = $params['symbol'];
+            $market = $this->market(['symbol' => $symbol]);
             $price = isset($params['profitprice']) ? $params['profitprice'] : $params['profittrigger'];
+            $trigger = $params['profittrigger'];
+            if ((string) $trigger[0] == "+") {                // Trigger expressed in relation to market price
+                $trigger = $market->bid + abs($trigger);
+            }
+            if ((string) $trigger[0] == "-") {                // Trigger expressed in relation to market price
+                $trigger = $market->ask - abs($trigger);
+            }
             $market = $this->normalizer->get_market_by_symbol($symbol);
             $params['type'] = isset($params['profitprice']) ? 'tplimit' : 'tpmarket';
-            $params['side'] = $params['profittrigger']  > $market->ask ? 'sell' : ($params['profittrigger'] < $market->bid ? 'buy' : null);
+            $params['side'] = $trigger  > $market->ask ? 'sell' : ($trigger < $market->bid ? 'buy' : null);
             $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
-            if (is_null($params['side'])) {                                                          // Trigger price in the middle of the spread, so can't determine direction
+            $params['profittrigger'] = $trigger;
+            if (is_null($params['side'])) {                  // Trigger price in the middle of the spread, so can't determine direction
                 logger::error('Could not determine direction of the take profit order because the trigger price is inside the spread. Adjust the trigger price and try again.');
             }
             if (!($params['amount'] > 0)) {
