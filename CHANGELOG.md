@@ -146,12 +146,12 @@ maximum position size (which we wanted).</li>
 <li>optimized market data passthrough to the normalizers</li>
 <li>stop loss and take profit orders now return an orderObject instead of an array</li>
 <li>the close command now accepts an optional price= paramter to close positions using limit orders</li>
+<li>added ability to express order price in relation to market price (eg: price=-20 would place the order $20 below the current market price using a limit order). This also works for the stoptrigger and profittrigger parameters.</li>
       </ul>
 </tr>
 <tr>
     <td>Future</td>
     <td><ul>
-<li>add ability to express order price in relation to market price (eg: price=-20 would place the order $20 below the current market price using a limit order)</li>
 <li>automatic cancelling of stoploss and take profit orders if the position is closed or the stop/takeprofit is hit</li>
 <li>order layering (eg: price=2000-2050,5 would place 5 limit orders equally between the $2000 and $2050 price levels</li>
       <li>limit order timeouts (eg: timeout=2 would optionally cancel a limit order after 2 minutes, or switch it to a market order if it has not yet been filled)</li>
