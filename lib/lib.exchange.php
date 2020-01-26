@@ -464,7 +464,6 @@
         public function takeprofit($params) {
             $symbol = $params['symbol'];
             $market = $this->market(['symbol' => $symbol]);
-            $price = isset($params['profitprice']) ? $params['profitprice'] : $params['profittrigger'];
             $trigger = $params['profittrigger'];
             if ((string) $trigger[0] == "+") {                // Trigger expressed in relation to market price
                 $trigger = $market->bid + abs($trigger);
@@ -472,6 +471,7 @@
             if ((string) $trigger[0] == "-") {                // Trigger expressed in relation to market price
                 $trigger = $market->ask - abs($trigger);
             }
+            $price = isset($params['profitprice']) ? $params['profitprice'] : $trigger;
             $market = $this->normalizer->get_market_by_symbol($symbol);
             $params['type'] = isset($params['profitprice']) ? 'tplimit' : 'tpmarket';
             $params['side'] = $trigger  > $market->ask ? 'sell' : ($trigger < $market->bid ? 'buy' : null);
