@@ -331,10 +331,10 @@
             $size = $params['size'];
             $price = isset($params['price']) ? $params['price'] : null;
             if (!is_null($price)) {
-                if ((string) $price[0] == "+") {                  // Price expressed in relation to market price
+                if ((string) $price[0] == "+") {                  // Price expressed in relation to market price (above price)
                     $price = $market->bid + abs($price);
                 }
-                if ((string) $price[0] == "-") {                  // Price expressed in relation to market price
+                if ((string) $price[0] == "-") {                  // Price expressed in relation to market price (below price)
                     $price = $market->ask - abs($price);
                 }
             }
@@ -437,10 +437,10 @@
             $symbol = $params['symbol'];
             $market = $this->market(['symbol' => $symbol]);
             $trigger = $params['stoptrigger'];
-            if ((string) $trigger[0] == "+") {                // Trigger expressed in relation to market price
+            if ((string) $trigger[0] == "+") {                // Trigger expressed in relation to market price (above price)
                 $trigger = $market->bid + abs($trigger);
             }
-            if ((string) $trigger[0] == "-") {                // Trigger expressed in relation to market price
+            if ((string) $trigger[0] == "-") {                // Trigger expressed in relation to market price (below price)
                 $trigger = $market->ask - abs($trigger);
             }
             $price = isset($params['stopprice']) ? $params['stopprice'] : $trigger;
@@ -466,10 +466,10 @@
             $market = $this->market(['symbol' => $symbol]);
             $price = isset($params['profitprice']) ? $params['profitprice'] : $params['profittrigger'];
             $trigger = $params['profittrigger'];
-            if ((string) $trigger[0] == "+") {                // Trigger expressed in relation to market price
+            if ((string) $trigger[0] == "+") {                // Trigger expressed in relation to market price (above price)
                 $trigger = $market->bid + abs($trigger);
             }
-            if ((string) $trigger[0] == "-") {                // Trigger expressed in relation to market price
+            if ((string) $trigger[0] == "-") {                // Trigger expressed in relation to market price (below price)
                 $trigger = $market->ask - abs($trigger);
             }
             $market = $this->normalizer->get_market_by_symbol($symbol);
