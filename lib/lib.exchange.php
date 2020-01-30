@@ -387,7 +387,8 @@
                             'stoptrigger' => $params['stoptrigger'],
                             'stopprice' => (isset($params['stopprice']) ? $params['stopprice'] : null),
                             'size' => (isset($params['stopsize']) ? $params['stopsize'] : $params['size']),
-                            'reduce' => (isset($params['reduce']) ? $params['reduce'] : false)
+                            'reduce' => (isset($params['reduce']) ? $params['reduce'] : false),
+                            'triggertype' => (isset($params['triggertype']) ? $params['triggertype'] : null),
                         ];
                         $slResult = $this->stoploss($slParams);
                         $linkedOrder->add($slResult);

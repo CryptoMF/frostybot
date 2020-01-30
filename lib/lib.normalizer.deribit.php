@@ -195,6 +195,11 @@
                 'price'     => isset($params['price']) ? $params['price'] : null,
                 'params'    => []
             ];
+            $triggerTypeMap = [
+                'mark'      =>  'mark_price',
+                'last'      =>  'last_price',
+                'index'     =>  'index_price'
+            ];
             if (!in_array($params['type'],['limit','market'])) {
                 $result['type']   = strpos($params['type'],'limit') !== false ? 'limit' : 'market';
                 $result['params'] = [
@@ -204,12 +209,11 @@
                     $result['price'] = isset($params['stopprice']) ? $params['stopprice'] : null;
                     $result['params']['stopPx']   = $params['stoptrigger'];
                     $result['params']['reduceOnly'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
-                    $result['params']['execInst'] = 'index_price';
+                    $result['params']['execInst'] = (isset($params['triggertype'])) ? $triggerTypeMap[$params['triggertype']] : 'mark_price';
                 }
                 if (substr($params['type'],0,2) == 'tp') {
                     $result['price'] = isset($params['profitprice']) ? $params['profitprice'] : $params['profittrigger'];
                     $result['params']['reduceOnly'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
-                    $result['params']['execInst'] = 'index_price';
                 }
             }
             return $result;
