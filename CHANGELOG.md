@@ -145,6 +145,7 @@ maximum position size (which we wanted).</li>
 <li>added SYMBOLMAP command to configure symbol mappings for each exchange</li>
 <li>optimized market data passthrough to the normalizers</li>
 <li>stop loss and take profit orders now return an orderObject instead of an array</li>
+<li>added support for the triggertype parameter to specify which price to use for stop loss orders, valid values are mark, index and last. For example:<br />deribit:long size=10000 stoptrigger=-200 triggertype=last</li>
 <li>the close command now accepts an optional price= paramter to close positions using limit orders</li>
 <li>added ability to express order price in relation to market price (eg: price=-20 would place the order $20 below the current market price using a limit order). This also works for the stoptrigger and profittrigger parameters.</li>
       </ul>
