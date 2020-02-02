@@ -323,21 +323,59 @@
             return $orderSize;
         }
 
+        // Convert price (convert layered orders and relative prices to actual prices)
+        private function convert_price($symbol, $price = null) {
+            if (is_null($price)) {                                              // Price not given
+                return null;
+            }
+            $market = $this->market(['symbol' => $symbol]);
+            if (strpos($price, ',') !== false) {                               // Layered order
+                $price = $price.(substr_count($price, ',') < 2 ? ',5' : '');   // Add default qty  
+                list($range1, $range2, $qty) = explode(',', $price);
+                if ((string) $price[0] == "+") {                                // Price expressed in relation to market price (above price)
+                    $range1 = $market->bid + abs($range1);
+                    $range2 = $market->bid + abs($range2);
+                }    
+                if ((string) $price[0] == "-") {                                // Price expressed in relation to market price (above price)
+                    $range1 = $market->ask - abs($range1);
+                    $range2 = $market->ask - abs($range2);
+                }    
+                $rangebottom = min($range1, $range2);
+                $rangetop = max($range1, $range2);
+                $inc = ($rangetop - $rangebottom) / $qty;
+                $ret = [];
+                for ($i = $rangebottom; $i < $rangetop; $i += $inc) {
+                    $ret[] = $i;
+                }
+                return $ret;
+            } else {                                                            // Non-layered order
+                if ((string) $price[0] == "+") {                                // Price expressed in relation to market price (above price)
+                    $price = $market->bid + abs($price);
+                }
+                if ((string) $price[0] == "-") {                                // Price expressed in relation to market price (below price)
+                    $price = $market->ask - abs($price);
+                }
+                return $price;
+            }
+        }
+
+        // Get average price
+        private function average_price($symbol, $price) {
+            $price = $this->convert_price($symbol, $price);
+            if (is_array($price)) {
+                return array_sum($price) / count($price);
+            } else {
+                return is_null($price) ? null : $price;
+            }
+        }
+        
         // Perform Trade
         private function trade($direction, $params) {
             $stub = $params['stub'];
             $symbol = $params['symbol'];
             $market = $this->market(['symbol' => $symbol]);
             $size = $params['size'];
-            $price = isset($params['price']) ? $params['price'] : null;
-            if (!is_null($price)) {
-                if ((string) $price[0] == "+") {                  // Price expressed in relation to market price (above price)
-                    $price = $market->bid + abs($price);
-                }
-                if ((string) $price[0] == "-") {                  // Price expressed in relation to market price (below price)
-                    $price = $market->ask - abs($price);
-                }
-            }
+            $price = isset($params['price']) ? $this->average_price($symbol, $params['price']) : null;
             $type = is_null($price) ? 'market' : 'limit';
             if (strtolower(substr($size,-1)) == 'x') {             // Position size given in x
                 $multiplier = str_replace('x','',strtolower($size));
@@ -367,19 +405,24 @@
             $side = ($direction == "long" ? "buy" : "sell");
             if ($requestedSize > 0) {
                 $orderParams = [
+                    'stub'   => $stub,
                     'symbol' => $symbol,
                     'type'   => $type,
                     'amount' => $requestedSize, 
                     'side'   => $side,
-                    'price'  => $price
+                    'price'  => (isset($params['price']) ? $params['price'] : null)
                 ];
                 $orderResult = $this->submit_order($orderParams);
                 $balance = $this->total_balance_usd();
                 $comment = isset($params['comment']) ? $params['comment'] : 'None';
                 logger::info('TRADE:'.strtoupper($direction).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
                 if ((isset($params['stoptrigger'])) || (isset($params['profittrigger']))) {
-                    $linkedOrder = new linkedOrderObject($stub, $symbol);
-                    $linkedOrder->add($orderResult);
+                    if (is_a($orderResult,'linkedOrderObject')) {
+                        $linkedOrder = $orderResult;
+                    } else {
+                        $linkedOrder = new linkedOrderObject($stub, $symbol);
+                        $linkedOrder->add($orderResult);
+                    }
                     // Stop loss orders
                     if (isset($params['stoptrigger'])) {
                         $slParams = [
@@ -423,7 +466,31 @@
         }
 
         // Submit an order the exchange
-        public function submit_order($params) {
+        private function submit_order($params) {
+            if ((!is_null($params['price'])) && (strpos($params['price'], ',') !== false)) {     // This is a layered order
+                return $this->layered_order($params);
+            } else {                                                                             // This is a non-layered order
+                return $this->regular_order($params);
+            }
+        }
+
+        // Layered order
+        private function layered_order($params) {
+            $prices = $this->convert_price($params['symbol'], $params['price']);
+            $linkedOrder = new linkedOrderObject($params['stub'], $params['symbol']);
+            $amount = $params['amount'] / count($prices);
+            foreach ($prices as $price) {
+                $params['amount'] = $amount;
+                $params['price'] = $price;
+                $orderResult = $this->regular_order($params);
+                $linkedOrder->add($orderResult);
+            }
+            return $linkedOrder;
+        }
+
+        // Regular non-layered order
+        private function regular_order($params) {
+            $params['price'] = $this->convert_price($params['symbol'], $params['price']);
             $orderParams = $this->normalizer->order_params($params);
             list ($symbol, $type, $side, $amount, $price, $params) = array_values((array) $orderParams);
             $rawOrderResult = $this->ccxt->create_order($symbol, $type, $side, $amount, $price, $params);
@@ -497,7 +564,7 @@
                 $side = $position->direction == 'long' ? 'sell' : ($position->direction == 'short' ? 'buy' : null);
                 $market = $position->market;
                 $requestedSize = ($orderSizing == 'quote' ? (round($position->size_quote * ($size / 100),0) / $market->contract_size) : ($position->size_base * ($size / 100)));
-                $price = (isset($params['price']) ? $params['price'] : null);
+                $price = isset($params['price']) ? $this->average_price($symbol, $params['price']) : null;
                 $type = (is_null($price) ? 'market' : 'limit');
                 if ($requestedSize > 0) {
                     $orderParams = [
@@ -505,7 +572,8 @@
                         'type'   => $type,
                         'amount' => $requestedSize, 
                         'side'   => $side,
-                        'price'  => $price
+                        'price'  => (isset($params['price']) ? $params['price'] : null),
+                        'reduce' => true
                     ];
                     $orderResult = $this->submit_order($orderParams);
                     $balance = $this->total_balance_usd();
