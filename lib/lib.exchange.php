@@ -498,7 +498,7 @@
                 $market = $position->market;
                 $requestedSize = ($orderSizing == 'quote' ? (round($position->size_quote * ($size / 100),0) / $market->contract_size) : ($position->size_base * ($size / 100)));
                 $price = (isset($params['price']) ? $params['price'] : null);
-                $type = (is_null($price) ? 'market' : limit);
+                $type = (is_null($price) ? 'market' : 'limit');
                 if ($requestedSize > 0) {
                     $orderParams = [
                         'symbol' => $symbol,
