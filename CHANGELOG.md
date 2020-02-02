@@ -2,7 +2,7 @@
 
 ## Changelog
 
-A huge thank you to all of those that have contributed and collaborated on FrostyBot over the past 6 months. A particular shoutout to @Barnz for his huge contribution to the bot. Many things have changed since I started out on this project, and this is still very much a work in progress. I hope to improve on it sugnificantly over the next year.
+A huge thank you to all of those that have contributed and collaborated on FrostyBot over the past 6 months. A particular shoutout to @Barnz for his huge contribution to the bot. Many things have changed since I started out on this project, and this is still very much a work in progress. I hope to improve on it significantly over the next year.
 
 <table>
   <tr>
