@@ -314,7 +314,7 @@
         private function convert_size($usdSize, $symbol, $price = null) {
             $market = $this->market(['symbol' => $symbol]);
             $contractSize = $market->contract_size;                                                      // Exchange contract size in USD
-            $price = (!is_null($price)) ? $price : (($market->bid + $market->ask) / 2);             // Use price if given, else just use a rough market estimate
+            $price = (!is_null($price)) ? $price : (($market->bid + $market->ask) / 2);                  // Use price if given, else just use a rough market estimate
             if ($this->normalizer->orderSizing == 'quote') {                                             // Exchange uses quote price
                 $orderSize = round($usdSize / $contractSize,0);
             } else {                                                                                     // Exchange uses base price
@@ -467,7 +467,7 @@
 
         // Submit an order the exchange
         private function submit_order($params) {
-            if ((!is_null($params['price'])) && (strpos($params['price'], ',') !== false)) {     // This is a layered order
+            if ((isset($params['price'])) && (!is_null($params['price'])) && (strpos($params['price'], ',') !== false)) {     // This is a layered order
                 return $this->layered_order($params);
             } else {                                                                             // This is a non-layered order
                 return $this->regular_order($params);
@@ -490,7 +490,7 @@
 
         // Regular non-layered order
         private function regular_order($params) {
-            $params['price'] = $this->convert_price($params['symbol'], $params['price']);
+            $params['price'] = $this->convert_price($params['symbol'], (isset($params['price']) ? $params['price'] : null));
             $orderParams = $this->normalizer->order_params($params);
             list ($symbol, $type, $side, $amount, $price, $params) = array_values((array) $orderParams);
             $rawOrderResult = $this->ccxt->create_order($symbol, $type, $side, $amount, $price, $params);
