@@ -513,6 +513,16 @@
             }
             $price = isset($params['stopprice']) ? $params['stopprice'] : $trigger;
             $market = $this->normalizer->get_market_by_symbol($symbol);
+            if (isset($params['size'])) {
+                if (strtolower(substr($params['size'],-1)) == 'x') {             // Order size given in x
+                    $multiplier = str_replace('x','',strtolower($params['size']));
+                    $params['size'] = $this->total_balance_usd() * $multiplier;
+                }
+                if (strtolower(substr($params['size'],-1)) == '%') {             // Order size given in %
+                    $multiplier = str_replace('%','',strtolower($params['size'])) / 100;
+                    $params['size'] = $this->total_balance_usd() * $multiplier;
+                }
+            }
             $params['type'] = isset($params['stopprice']) ? 'sllimit' : 'slmarket';
             $params['side'] = $trigger  > $market->ask ? 'buy' : ($trigger < $market->bid ? 'sell' : null);
             $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
@@ -543,6 +553,16 @@
             $market = $this->normalizer->get_market_by_symbol($symbol);
             $params['type'] = isset($params['profitprice']) ? 'tplimit' : 'tpmarket';
             $params['side'] = $trigger  > $market->ask ? 'sell' : ($trigger < $market->bid ? 'buy' : null);
+            if (isset($params['size'])) {
+                if (strtolower(substr($params['size'],-1)) == 'x') {             // Order size given in x
+                    $multiplier = str_replace('x','',strtolower($params['size']));
+                    $params['size'] = $this->total_balance_usd() * $multiplier;
+                }
+                if (strtolower(substr($params['size'],-1)) == '%') {             // Order size given in %
+                    $multiplier = str_replace('%','',strtolower($params['size'])) / 100;
+                    $params['size'] = $this->total_balance_usd() * $multiplier;
+                }
+            }
             $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
             $params['profittrigger'] = $trigger;
             if (is_null($params['side'])) {                  // Trigger price in the middle of the spread, so can't determine direction
