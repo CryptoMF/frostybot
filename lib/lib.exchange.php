@@ -429,7 +429,7 @@
                             'symbol' => $symbol,
                             'stoptrigger' => $params['stoptrigger'],
                             'stopprice' => (isset($params['stopprice']) ? $params['stopprice'] : null),
-                            'size' => (isset($params['stopsize']) ? $params['stopsize'] : $params['size']),
+                            'size' => (isset($params['stopsize']) ? $params['stopsize'] : $size),
                             'reduce' => (isset($params['reduce']) ? $params['reduce'] : false),
                             'triggertype' => (isset($params['triggertype']) ? $params['triggertype'] : null),
                         ];
@@ -441,7 +441,7 @@
                         $tpParams = [
                             'symbol' => $symbol,
                             'profittrigger' => $params['profittrigger'],
-                            'size' => (isset($params['profitsize']) ? $params['profitsize'] : $params['size']),
+                            'size' => (isset($params['profitsize']) ? $params['profitsize'] : $size),
                             'reduce' => (isset($params['reduce']) ? $params['reduce'] : false)
                         ];
                         $tpResult = $this->takeprofit($tpParams);
