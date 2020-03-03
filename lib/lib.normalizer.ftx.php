@@ -79,7 +79,7 @@
             $markets = [];
             $marketFilters = ['BEAR','BULL','MOON','DOOM','HEDGE','MOVE'];
             foreach($result as $market) {
-                if ((in_array($market['type'],['spot','future'])) && ($market['quote'] == 'USD') && ($market['base'] != 'USDT') && ($market['active'] == true) && (!is_numeric(substr($market['symbol'],-4)))) {
+                if ((in_array($market['type'],['spot','future'])) && ($market['quote'] == 'USD') && ($market['base'] != 'USDT') && ($market['active'] == true)) {
                     $filter = false;
                     foreach($marketFilters as $marketFilter) {
                         if (strpos($market['symbol'],$marketFilter) !== false) {

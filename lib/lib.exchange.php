@@ -314,7 +314,7 @@
         private function convert_size($usdSize, $symbol, $price = null) {
             $market = $this->market(['symbol' => $symbol]);
             $contractSize = $market->contract_size;                                                      // Exchange contract size in USD
-            $price = (!is_null($price)) ? $price : (($market->bid + $market->ask) / 2);             // Use price if given, else just use a rough market estimate
+            $price = (!is_null($price)) ? $price : (($market->bid + $market->ask) / 2);                  // Use price if given, else just use a rough market estimate
             if ($this->normalizer->orderSizing == 'quote') {                                             // Exchange uses quote price
                 $orderSize = round($usdSize / $contractSize,0);
             } else {                                                                                     // Exchange uses base price
@@ -429,7 +429,7 @@
                             'symbol' => $symbol,
                             'stoptrigger' => $params['stoptrigger'],
                             'stopprice' => (isset($params['stopprice']) ? $params['stopprice'] : null),
-                            'size' => (isset($params['stopsize']) ? $params['stopsize'] : $params['size']),
+                            'size' => (isset($params['stopsize']) ? $params['stopsize'] : $size),
                             'reduce' => (isset($params['reduce']) ? $params['reduce'] : false),
                             'triggertype' => (isset($params['triggertype']) ? $params['triggertype'] : null),
                         ];
@@ -441,7 +441,7 @@
                         $tpParams = [
                             'symbol' => $symbol,
                             'profittrigger' => $params['profittrigger'],
-                            'size' => (isset($params['profitsize']) ? $params['profitsize'] : $params['size']),
+                            'size' => (isset($params['profitsize']) ? $params['profitsize'] : $size),
                             'reduce' => (isset($params['reduce']) ? $params['reduce'] : false)
                         ];
                         $tpResult = $this->takeprofit($tpParams);
@@ -467,7 +467,7 @@
 
         // Submit an order the exchange
         private function submit_order($params) {
-            if ((!is_null($params['price'])) && (strpos($params['price'], ',') !== false)) {     // This is a layered order
+            if ((isset($params['price'])) && (!is_null($params['price'])) && (strpos($params['price'], ',') !== false)) {     // This is a layered order
                 return $this->layered_order($params);
             } else {                                                                             // This is a non-layered order
                 return $this->regular_order($params);
@@ -490,7 +490,7 @@
 
         // Regular non-layered order
         private function regular_order($params) {
-            $params['price'] = $this->convert_price($params['symbol'], $params['price']);
+            $params['price'] = $this->convert_price($params['symbol'], (isset($params['price']) ? $params['price'] : null));
             $orderParams = $this->normalizer->order_params($params);
             list ($symbol, $type, $side, $amount, $price, $params) = array_values((array) $orderParams);
             $rawOrderResult = $this->ccxt->create_order($symbol, $type, $side, $amount, $price, $params);
@@ -513,6 +513,16 @@
             }
             $price = isset($params['stopprice']) ? $params['stopprice'] : $trigger;
             $market = $this->normalizer->get_market_by_symbol($symbol);
+            if (isset($params['size'])) {
+                if (strtolower(substr($params['size'],-1)) == 'x') {             // Order size given in x
+                    $multiplier = str_replace('x','',strtolower($params['size']));
+                    $params['size'] = $this->total_balance_usd() * $multiplier;
+                }
+                if (strtolower(substr($params['size'],-1)) == '%') {             // Order size given in %
+                    $multiplier = str_replace('%','',strtolower($params['size'])) / 100;
+                    $params['size'] = $this->total_balance_usd() * $multiplier;
+                }
+            }
             $params['type'] = isset($params['stopprice']) ? 'sllimit' : 'slmarket';
             $params['side'] = $trigger  > $market->ask ? 'buy' : ($trigger < $market->bid ? 'sell' : null);
             $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
@@ -543,6 +553,16 @@
             $market = $this->normalizer->get_market_by_symbol($symbol);
             $params['type'] = isset($params['profitprice']) ? 'tplimit' : 'tpmarket';
             $params['side'] = $trigger  > $market->ask ? 'sell' : ($trigger < $market->bid ? 'buy' : null);
+            if (isset($params['size'])) {
+                if (strtolower(substr($params['size'],-1)) == 'x') {             // Order size given in x
+                    $multiplier = str_replace('x','',strtolower($params['size']));
+                    $params['size'] = $this->total_balance_usd() * $multiplier;
+                }
+                if (strtolower(substr($params['size'],-1)) == '%') {             // Order size given in %
+                    $multiplier = str_replace('%','',strtolower($params['size'])) / 100;
+                    $params['size'] = $this->total_balance_usd() * $multiplier;
+                }
+            }
             $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
             $params['profittrigger'] = $trigger;
             if (is_null($params['side'])) {                  // Trigger price in the middle of the spread, so can't determine direction
