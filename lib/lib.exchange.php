@@ -582,7 +582,7 @@
                     return $orderResult;
                 }
             } else {
-                logger::error("You do not currently have a position on ".$symbol);
+                logger::warning("You do not currently have a position on ".$symbol);
             }
         }
 
