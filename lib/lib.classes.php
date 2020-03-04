@@ -115,7 +115,7 @@
             $this->symbol = $symbol;
             $this->base = $base;
             $this->quote = $quote;
-            $this->expiration = $expiration;
+            $this->expiration = is_null($expiration) ? null : date('c', strtotime($expiration));
             $this->bid = $bid;
             $this->ask = $ask;
             $this->contract_size = $contractSize;
