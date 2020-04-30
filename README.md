@@ -15,7 +15,7 @@ The way it works is simple:
 
 ## Authors
 
-* CryptoMF from the [Krown's Crypto Cave Discord group](https://discordapp.com/invite/hzKU7qe)
+* FrostyAF from the [Krown's Crypto Cave Discord group](https://discordapp.com/invite/hzKU7qe)
 * Barnz from the [Krown's Crypto Cave Discord group](https://discordapp.com/invite/hzKU7qe)
             
 ## Dedication
