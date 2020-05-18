@@ -190,13 +190,11 @@ NOTE: Both limit entries are NOT a reduce-only unless a reduce=true is used and 
     
     ./frostybot deribit:long price=9593 stoptrigger=9500 profittrigger=9750    
     
-To workaround this limitation, you can use stop-market/reduce-only on Deribit:
-This command will creates a limit-entry, market-stop-loss (reduce-only) and market-take-profit (reduce-only) order.
-Assuming the market price is in between the 9500 and 9800, the correct market stop-loss orders should be placed.
+To workaround this limitation, you can use stop-market/reduce-only order for both stop-loss and take-profit on Deribit. This command will create a limit-entry, market-stop-loss (reduce-only) and market-take-profit (reduce-only) order. Assuming the market price is in between the 9500 and 9800, the correct market stop-loss orders should be placed as the bot will calculate the direction of the order based on the market price.
     
     ./frostybot deribit:long size=1000 price=9550
     ./frostybot deribit:stoploss size=1000 stoptrigger=9500 reduce=true
-    ./frostybot deribit:stoploss size=1000 profittrigger=9800 reduce=true
+    ./frostybot deribit:stoploss size=1000 stoptrigger=9800 reduce=true
 
 This example will create a set of 5 orders spread out within the provided price range:
 
