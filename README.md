@@ -183,6 +183,27 @@ Other than Tradingview firing off webhooks, you can also communicate manually wi
 
 *NOTE:* The command syntax for Tradingview is exactly the same as for the CLI (except for the addition of ./frostybot in front of the command on the CLI). Any command that you can run on the CLI you can also run using webhooks. While this may not necessarily be useful for Tradingview, it can come in handy if you want to integrate something else with Frostybot. All Frostybot output is in JSON, which makes external integration, like scripting and charting quite simple.
 
+**More examples:**
+
+This command will create a limit-entry, market-stop-loss, limit-take-profit order combo.
+NOTE: Both limit entries are NOT a reduce-only unless a reduce=true is used and the exchange supports it (FTX only):
+    
+    ./frostybot deribit:long price=9593 stoptrigger=9500 profittrigger=9750    
+    
+To workaround this limitation, you can use stop-market/reduce-only order for both stop-loss and take-profit on Deribit. This command will create a limit-entry, market-stop-loss (reduce-only) and market-take-profit (reduce-only) order. Assuming the market price is in between the 9500 and 9800, the correct market stop-loss orders should be placed as the bot will calculate the direction of the order based on the market price.
+    
+    ./frostybot deribit:long size=1000 price=9550
+    ./frostybot deribit:stoploss size=1000 stoptrigger=9500 reduce=true
+    ./frostybot deribit:stoploss size=1000 stoptrigger=9800 reduce=true
+
+This example will create a set of 5 orders spread out within the provided price range:
+
+    ./frostybot deribit:long size=1000 price=9550,9600
+    
+To ask for a specific number of orders, use a 3rd argument after the price range which stands for quantity:
+
+    ./frostybot deribit:long size=1000 price=9550,9600,3
+
 ## Report Bugs
 
 If you find a bug in the software, kindly report it [here](https://github.com/CryptoMF/frostybot/issues/new) so that we can properly track it.
