@@ -373,13 +373,12 @@
         private function get_absolute_size($size) {
           if (strtolower(substr($size,-1)) == 'x') {             // Position size given in x
               $multiplier = str_replace('x','',strtolower($size));
-              $size = $this->total_balance_usd() * $multiplier;
+              return $this->total_balance_usd() * $multiplier;
           }
           if (strtolower(substr($size,-1)) == '%') {             // Position size given in %
               $multiplier = str_replace('%','',strtolower($size)) / 100;
-              $size = $this->total_balance_usd() * $multiplier;
+              return $this->total_balance_usd() * $multiplier;
           }
-
           return $size;
         }
 
