@@ -565,7 +565,7 @@
           if ((string) $price_input[0] == "+") {                                // Trigger expressed in relation to market price (above price)
               return $market->bid + abs($price_input);
           }
-          if ((string) $trigger[0] == "-") {                                    // Trigger expressed in relation to market price (below price)
+          if ((string) $price_input[0] == "-") {                                // Trigger expressed in relation to market price (below price)
               return $market->ask - abs($price_input);
           }
           return $price_input;
