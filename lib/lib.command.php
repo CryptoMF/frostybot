@@ -229,9 +229,9 @@
                                                 break;
                         case 'SHORT'        :   $result = $this->exchange->short(requiredParams($this->params,['symbol','size']));
                                                 break;
-                        case 'RISKLONG'      :   $result = $this->exchange->risk_long(requiredParams($this->params,['symbol','risk', 'stoptrigger']));
+                        case 'RISKLONG'      :  $result = $this->exchange->risk_long(requiredParams($this->params,['symbol','risk', 'stoptrigger']));
                                                 break;
-                        case 'RISKSHORT'     :   $result = $this->exchange->risk_short(requiredParams($this->params,['symbol','risk', 'stoptrigger']));
+                        case 'RISKSHORT'     :  $result = $this->exchange->risk_short(requiredParams($this->params,['symbol','risk', 'stoptrigger']));
                                                 break;
                         case 'CLOSE'        :   $result = $this->exchange->close(requiredParams($this->params,['symbol']));
                                                 break;

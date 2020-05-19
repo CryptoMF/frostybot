@@ -385,18 +385,24 @@
 
         // Calculate size based on the risk and price difference
         private function calculate_size_risk_percent($symbol, $risk, $stopprice, $entryprice) {
-          $risk_usd = $this->total_balance_usd() * $risk;
+          if (strtolower(substr($risk,-1)) == '%') {             // risk given in %
+            $multiplier = str_replace('%','',strtolower($risk)) / 100;
+            $risk_usd = $this->total_balance_usd() * $multiplier;
+          }
+          else {
+            $risk_usd = $risk;
+          }
 
-          if ($entryprice is null) {
+          if (is_null($entryprice)) {
             $market = $this->market(['symbol' => $symbol]);
             if ($stopprice  > $market->ask) {
               $entryprice = $market->ask;
             }
             else if ($stopprice < $market->bid) {
-              $entryprice = $market->bid
+              $entryprice = $market->bid;
             }
             else {
-              logger:error('Unable to calculate the entry price, stop price is within spraed.');
+              logger::error('Unable to calculate the entry price, stop price is within spraed.');
               return null;
             }
           }
@@ -420,12 +426,12 @@
             else if (isset($params['risk']) and isset($params['stoptrigger'])) {
               $size = $this->calculate_size_risk_percent($symbol, $params['risk'], $params['stoptrigger'], $price);
             } else {
-              logger:error('Trade function received missing parameters');
+              logger::error('Trade function received missing parameters');
               return false;
             }
 
             if (is_null($size)) {
-              logger:error('Unable to determine the size of the trade')
+              logger::error('Unable to determine the size of the trade');
               return false;
             }
 
