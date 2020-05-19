@@ -407,8 +407,9 @@
             }
           }
 
-          $price_diff = abs($entryprice - $stopprice);
-          $size = $risk_usd / $price_diff;
+          $size_usd = $risk_usd / abs($entryprice - $stopprice);
+          $size = $size_usd * $entryprice;
+
           return $size;
         }
 
