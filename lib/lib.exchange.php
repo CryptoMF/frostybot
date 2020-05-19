@@ -369,8 +369,8 @@
             }
         }
 
-        // Calculate size
-        private function calculate_size($size) {
+        // Calculate the absolute price in case it is a percentage or multiplier of total balance
+        private function get_absolute_size($size) {
           if (strtolower(substr($size,-1)) == 'x') {             // Position size given in x
               $multiplier = str_replace('x','',strtolower($size));
               $size = $this->total_balance_usd() * $multiplier;
@@ -384,7 +384,7 @@
         }
 
         // Calculate size based on the risk and price difference
-        private function calculate_size_risk_percent($symbol, $risk, $stopprice, $entryprice) {
+        private function calculate_risk_size($symbol, $risk, $stopprice, $entryprice) {
           if (strtolower(substr($risk,-1)) == '%') {             // risk given in %
             $multiplier = str_replace('%','',strtolower($risk)) / 100;
             $risk_usd = $this->total_balance_usd() * $multiplier;
@@ -422,17 +422,18 @@
             $type = is_null($price) ? 'market' : 'limit';
 
             if (isset($params['size'])) {
-              $size = $this->calculate_size($params['size']);
+              $size = $this->get_absolute_size($params['size']);
             }
             else if (isset($params['risk']) and isset($params['stoptrigger'])) {
-              $size = $this->calculate_size_risk_percent($symbol, $params['risk'], $params['stoptrigger'], $price);
+              $stoptrigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
+              $size = $this->calculate_risk_size($symbol, $params['risk'], $stoptrigger, $price);
             } else {
-              logger::error('Trade function received missing parameters');
+              logger::error('Trade function received incorrect parameters.');
               return false;
             }
 
             if (is_null($size)) {
-              logger::error('Unable to determine the size of the trade');
+              logger::error('Unable to determine the size of the trade.');
               return false;
             }
 
@@ -559,30 +560,28 @@
             return $parsedOrderResult;
         }
 
+        // Calculate the absolute price in case the input contains +/- relative price
+        private function get_absolute_price($symbol, $price_input) {
+          $market = $this->market(['symbol' => $symbol]);
+          if ((string) $price_input[0] == "+") {                                // Trigger expressed in relation to market price (above price)
+              return $market->bid + abs($price_input);
+          }
+          if ((string) $trigger[0] == "-") {                                    // Trigger expressed in relation to market price (below price)
+              return $market->ask - abs($price_input);
+          }
+          return $price_input;
+        }
+
         // Stop Loss Orders
         // Limit or Market, depending on if you supply the 'price' parameter or not
         // Buy or Sell is automatically determined by comparing the 'stoptrigger' price and current market price. This is a required parameter.
         public function stoploss($params) {
             $symbol = $params['symbol'];
-            $market = $this->market(['symbol' => $symbol]);
-            $trigger = $params['stoptrigger'];
-            if ((string) $trigger[0] == "+") {                // Trigger expressed in relation to market price (above price)
-                $trigger = $market->bid + abs($trigger);
-            }
-            if ((string) $trigger[0] == "-") {                // Trigger expressed in relation to market price (below price)
-                $trigger = $market->ask - abs($trigger);
-            }
+            $trigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
             $price = isset($params['stopprice']) ? $params['stopprice'] : $trigger;
             $market = $this->normalizer->get_market_by_symbol($symbol);
             if (isset($params['size'])) {
-                if (strtolower(substr($params['size'],-1)) == 'x') {             // Order size given in x
-                    $multiplier = str_replace('x','',strtolower($params['size']));
-                    $params['size'] = $this->total_balance_usd() * $multiplier;
-                }
-                if (strtolower(substr($params['size'],-1)) == '%') {             // Order size given in %
-                    $multiplier = str_replace('%','',strtolower($params['size'])) / 100;
-                    $params['size'] = $this->total_balance_usd() * $multiplier;
-                }
+              $params['size'] = $this->get_absolute_size($params['size']);
             }
             $params['type'] = isset($params['stopprice']) ? 'sllimit' : 'slmarket';
             $params['side'] = $trigger  > $market->ask ? 'buy' : ($trigger < $market->bid ? 'sell' : null);
@@ -602,27 +601,13 @@
         // Take profit orders are always limit orders by design
         public function takeprofit($params) {
             $symbol = $params['symbol'];
-            $market = $this->market(['symbol' => $symbol]);
-            $price = isset($params['profitprice']) ? $params['profitprice'] : $params['profittrigger'];
-            $trigger = $params['profittrigger'];
-            if ((string) $trigger[0] == "+") {                // Trigger expressed in relation to market price (above price)
-                $trigger = $market->bid + abs($trigger);
-            }
-            if ((string) $trigger[0] == "-") {                // Trigger expressed in relation to market price (below price)
-                $trigger = $market->ask - abs($trigger);
-            }
+            $trigger = $this->get_absolute_price($symbol, $params['profittrigger']);
+            $price = isset($params['profitprice']) ? $params['profitprice'] : $trigger;
             $market = $this->normalizer->get_market_by_symbol($symbol);
             $params['type'] = isset($params['profitprice']) ? 'tplimit' : 'tpmarket';
             $params['side'] = $trigger  > $market->ask ? 'sell' : ($trigger < $market->bid ? 'buy' : null);
             if (isset($params['size'])) {
-                if (strtolower(substr($params['size'],-1)) == 'x') {             // Order size given in x
-                    $multiplier = str_replace('x','',strtolower($params['size']));
-                    $params['size'] = $this->total_balance_usd() * $multiplier;
-                }
-                if (strtolower(substr($params['size'],-1)) == '%') {             // Order size given in %
-                    $multiplier = str_replace('%','',strtolower($params['size'])) / 100;
-                    $params['size'] = $this->total_balance_usd() * $multiplier;
-                }
+              $params['size'] = $this->get_absolute_size($params['size']);
             }
             $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
             $params['profittrigger'] = $trigger;
