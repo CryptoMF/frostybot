@@ -8,7 +8,7 @@
         private $normalizer;                    // Normalizer class
         private $settings = [                   // Default settings
                     //'mode' => 'test',
-                ]; 
+                ];
         private $exchange;
         public $markets;
         public $marketsById;
@@ -21,9 +21,9 @@
             $this->exchange = strtolower($exchange);
             $class = "\\ccxt\\" .$this->exchange.(class_exists("\\ccxt\\" .$this->exchange."_frostybot") ? "_frostybot" : "");
             $normalizer = 'normalizer_'.strtolower(str_replace("_frostybot","",$exchange));
-            if (class_exists($class)) {  
+            if (class_exists($class)) {
                 $this->ccxt = new $class($options);
-            } 
+            }
             if (class_exists($normalizer)) {
                 $this->normalizer = new $normalizer($this->ccxt, $options);
             }
@@ -39,7 +39,7 @@
             }
         }
 
-        // Execute a particular CCXT method, 
+        // Execute a particular CCXT method,
         // If a normalizer method by the same name exists, execute that too, passing all the CCXT data to the normalizer
         public function __call($name, $params) {
             $result = false;
@@ -51,7 +51,7 @@
             }
             return $result;
         }
-        
+
         // Get CCXT info
         public function ccxtinfo($params) {
             $function = isset($params['function']) ? $params['function'] : null;
@@ -141,8 +141,8 @@
                 if ($symbol == $position->market->symbol) {
                     return $position;
                 }
-            }           
-            if ($suppress !== true) { 
+            }
+            if ($suppress !== true) {
                 logger::notice('You do not currently have a position on '.$symbol);
             }
             return false;
@@ -176,9 +176,9 @@
             if (isset($settings['symbol'])) { $filters['symbol'] = $settings['symbol']; }
             if (isset($settings['type'])) { $filters['type'] = $settings['type']; }
             if (isset($settings['direction'])) { $filters['direction'] = $settings['direction']; }
-            if (isset($settings['status'])) { 
-                $filters['status'] = $settings['status']; 
-                $onlyOpen = ($settings['status'] == "open" ? true : false); 
+            if (isset($settings['status'])) {
+                $filters['status'] = $settings['status'];
+                $onlyOpen = ($settings['status'] == "open" ? true : false);
             } else {
                 $onlyOpen = false;
             }
@@ -192,7 +192,7 @@
                     $filter = ($key == 'symbol') ? ($order->market->symbol !== $value) : ($order->$key !== $value);
                 }
                 if (!$filter) {
-                    $result[] = $order;                                
+                    $result[] = $order;
                 }
             }
             return $result;
@@ -207,8 +207,8 @@
             if (isset($settings['symbol'])) { $filters['symbol'] = $settings['symbol']; }
             if (isset($settings['type'])) { $filters['type'] = $settings['type']; }
             if (isset($settings['direction'])) { $filters['direction'] = $settings['direction']; }
-            if (isset($settings['status'])) { 
-                $onlyOpen = ($settings['status'] == "open" ? true : false); 
+            if (isset($settings['status'])) {
+                $onlyOpen = ($settings['status'] == "open" ? true : false);
             } else {
                 $onlyOpen = false;
             }
@@ -330,16 +330,16 @@
             }
             $market = $this->market(['symbol' => $symbol]);
             if (strpos($price, ',') !== false) {                               // Layered order
-                $price = $price.(substr_count($price, ',') < 2 ? ',5' : '');   // Add default qty  
+                $price = $price.(substr_count($price, ',') < 2 ? ',5' : '');   // Add default qty
                 list($range1, $range2, $qty) = explode(',', $price);
                 if ((string) $price[0] == "+") {                                // Price expressed in relation to market price (above price)
                     $range1 = $market->bid + abs($range1);
                     $range2 = $market->bid + abs($range2);
-                }    
+                }
                 if ((string) $price[0] == "-") {                                // Price expressed in relation to market price (above price)
                     $range1 = $market->ask - abs($range1);
                     $range2 = $market->ask - abs($range2);
-                }    
+                }
                 $rangebottom = min($range1, $range2);
                 $rangetop = max($range1, $range2);
                 $inc = ($rangetop - $rangebottom) / $qty;
@@ -368,23 +368,74 @@
                 return is_null($price) ? null : $price;
             }
         }
-        
+
+        // Calculate the absolute price in case it is a percentage or multiplier of total balance
+        private function get_absolute_size($size) {
+          if (strtolower(substr($size,-1)) == 'x') {             // Position size given in x
+              $multiplier = str_replace('x','',strtolower($size));
+              return $this->total_balance_usd() * $multiplier;
+          }
+          if (strtolower(substr($size,-1)) == '%') {             // Position size given in %
+              $multiplier = str_replace('%','',strtolower($size)) / 100;
+              return $this->total_balance_usd() * $multiplier;
+          }
+          return $size;
+        }
+
+        // Calculate size based on the risk and price difference
+        private function calculate_risk_size($symbol, $risk, $stopprice, $entryprice) {
+          if (strtolower(substr($risk,-1)) == '%') {             // risk given in %
+            $multiplier = str_replace('%','',strtolower($risk)) / 100;
+            $risk_usd = $this->total_balance_usd() * $multiplier;
+          }
+          else {
+            $risk_usd = $risk;
+          }
+
+          if (is_null($entryprice)) {
+            $market = $this->market(['symbol' => $symbol]);
+            if ($stopprice  > $market->ask) {
+              $entryprice = $market->ask;
+            }
+            else if ($stopprice < $market->bid) {
+              $entryprice = $market->bid;
+            }
+            else {
+              logger::error('Unable to calculate the entry price, stop price is within spraed.');
+              return null;
+            }
+          }
+
+          $size_usd = $risk_usd / abs($entryprice - $stopprice);
+          $size = $size_usd * $entryprice;
+
+          return $size;
+        }
+
         // Perform Trade
         private function trade($direction, $params) {
             $stub = $params['stub'];
             $symbol = $params['symbol'];
             $market = $this->market(['symbol' => $symbol]);
-            $size = $params['size'];
             $price = isset($params['price']) ? $this->average_price($symbol, $params['price']) : null;
             $type = is_null($price) ? 'market' : 'limit';
-            if (strtolower(substr($size,-1)) == 'x') {             // Position size given in x
-                $multiplier = str_replace('x','',strtolower($size));
-                $size = $this->total_balance_usd() * $multiplier;
+
+            if (isset($params['size'])) {
+              $size = $this->get_absolute_size($params['size']);
             }
-            if (strtolower(substr($size,-1)) == '%') {             // Position size given in %
-                $multiplier = str_replace('%','',strtolower($size)) / 100;
-                $size = $this->total_balance_usd() * $multiplier;
+            else if (isset($params['risk']) and isset($params['stoptrigger'])) {
+              $stoptrigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
+              $size = $this->calculate_risk_size($symbol, $params['risk'], $stoptrigger, $price);
+            } else {
+              logger::error('Trade function received incorrect parameters.');
+              return false;
             }
+
+            if (is_null($size)) {
+              logger::error('Unable to determine the size of the trade.');
+              return false;
+            }
+
             $requestedSize = $this->convert_size($size, $symbol, $price);                               // Requested size in contracts
             $position = $this->position(['symbol' => $symbol, 'suppress' => true]);
             $positionSize = $this->position_size($symbol);                                              // Position size in contracts
@@ -392,11 +443,11 @@
             if ($positionSize != 0) {                                                                   // If already in a position
                 if ($direction != $currentDir) {
                     $requestedSize += $positionSize;                                                    // Flip position if required
-                } 
+                }
                 if ($direction == $currentDir) {
                     if ($requestedSize > $positionSize) {
                         $requestedSize -= $positionSize;                                                // Extend position if required
-                    } else {      
+                    } else {
                         $requestedSize = 0;
                         logger::warning('Already '.$direction.' more contracts than requested');        // Prevent PineScript from making you poor
                     }
@@ -408,7 +459,7 @@
                     'stub'   => $stub,
                     'symbol' => $symbol,
                     'type'   => $type,
-                    'amount' => $requestedSize, 
+                    'amount' => $requestedSize,
                     'side'   => $side,
                     'price'  => (isset($params['price']) ? $params['price'] : null)
                 ];
@@ -465,6 +516,16 @@
             return $this->trade('short', $params);
         }
 
+        // Risk Manageded Long Trade (Limit or Market, depending on if you supply the price parameter)
+        public function risk_long($params) {
+            return $this->trade('long', $params);
+        }
+
+        // Risk Manageded Short Trade (Limit or Market, depending on if you supply the price parameter)
+        public function risk_short($params) {
+            return $this->trade('short', $params);
+        }
+
         // Submit an order the exchange
         private function submit_order($params) {
             if ((isset($params['price'])) && (!is_null($params['price'])) && (strpos($params['price'], ',') !== false)) {     // This is a layered order
@@ -498,30 +559,28 @@
             return $parsedOrderResult;
         }
 
-        // Stop Loss Orders 
+        // Calculate the absolute price in case the input contains +/- relative price
+        private function get_absolute_price($symbol, $price_input) {
+          $market = $this->market(['symbol' => $symbol]);
+          if ((string) $price_input[0] == "+") {                                // Trigger expressed in relation to market price (above price)
+              return $market->bid + abs($price_input);
+          }
+          if ((string) $price_input[0] == "-") {                                // Trigger expressed in relation to market price (below price)
+              return $market->ask - abs($price_input);
+          }
+          return $price_input;
+        }
+
+        // Stop Loss Orders
         // Limit or Market, depending on if you supply the 'price' parameter or not
         // Buy or Sell is automatically determined by comparing the 'stoptrigger' price and current market price. This is a required parameter.
         public function stoploss($params) {
             $symbol = $params['symbol'];
-            $market = $this->market(['symbol' => $symbol]);
-            $trigger = $params['stoptrigger'];
-            if ((string) $trigger[0] == "+") {                // Trigger expressed in relation to market price (above price)
-                $trigger = $market->bid + abs($trigger);
-            }
-            if ((string) $trigger[0] == "-") {                // Trigger expressed in relation to market price (below price)
-                $trigger = $market->ask - abs($trigger);
-            }
+            $trigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
             $price = isset($params['stopprice']) ? $params['stopprice'] : $trigger;
             $market = $this->normalizer->get_market_by_symbol($symbol);
             if (isset($params['size'])) {
-                if (strtolower(substr($params['size'],-1)) == 'x') {             // Order size given in x
-                    $multiplier = str_replace('x','',strtolower($params['size']));
-                    $params['size'] = $this->total_balance_usd() * $multiplier;
-                }
-                if (strtolower(substr($params['size'],-1)) == '%') {             // Order size given in %
-                    $multiplier = str_replace('%','',strtolower($params['size'])) / 100;
-                    $params['size'] = $this->total_balance_usd() * $multiplier;
-                }
+              $params['size'] = $this->get_absolute_size($params['size']);
             }
             $params['type'] = isset($params['stopprice']) ? 'sllimit' : 'slmarket';
             $params['side'] = $trigger  > $market->ask ? 'buy' : ($trigger < $market->bid ? 'sell' : null);
@@ -536,32 +595,18 @@
             return $this->submit_order($params);
         }
 
-        // Take Profit Orders 
+        // Take Profit Orders
         // Buy or Sell is automatically determined by comparing the 'profittrigger' price and current market price. This is a required parameter.
         // Take profit orders are always limit orders by design
         public function takeprofit($params) {
             $symbol = $params['symbol'];
-            $market = $this->market(['symbol' => $symbol]);
-            $price = isset($params['profitprice']) ? $params['profitprice'] : $params['profittrigger'];
-            $trigger = $params['profittrigger'];
-            if ((string) $trigger[0] == "+") {                // Trigger expressed in relation to market price (above price)
-                $trigger = $market->bid + abs($trigger);
-            }
-            if ((string) $trigger[0] == "-") {                // Trigger expressed in relation to market price (below price)
-                $trigger = $market->ask - abs($trigger);
-            }
+            $trigger = $this->get_absolute_price($symbol, $params['profittrigger']);
+            $price = isset($params['profitprice']) ? $params['profitprice'] : $trigger;
             $market = $this->normalizer->get_market_by_symbol($symbol);
             $params['type'] = isset($params['profitprice']) ? 'tplimit' : 'tpmarket';
             $params['side'] = $trigger  > $market->ask ? 'sell' : ($trigger < $market->bid ? 'buy' : null);
             if (isset($params['size'])) {
-                if (strtolower(substr($params['size'],-1)) == 'x') {             // Order size given in x
-                    $multiplier = str_replace('x','',strtolower($params['size']));
-                    $params['size'] = $this->total_balance_usd() * $multiplier;
-                }
-                if (strtolower(substr($params['size'],-1)) == '%') {             // Order size given in %
-                    $multiplier = str_replace('%','',strtolower($params['size'])) / 100;
-                    $params['size'] = $this->total_balance_usd() * $multiplier;
-                }
+              $params['size'] = $this->get_absolute_size($params['size']);
             }
             $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
             $params['profittrigger'] = $trigger;
@@ -590,7 +635,7 @@
                     $orderParams = [
                         'symbol' => $symbol,
                         'type'   => $type,
-                        'amount' => $requestedSize, 
+                        'amount' => $requestedSize,
                         'side'   => $side,
                         'price'  => (isset($params['price']) ? $params['price'] : null),
                         'reduce' => true
@@ -663,7 +708,7 @@
         public function get($param) {
             if (isset($this->settings[$param])) {
                 return $this->settings[$param];
-            } 
+            }
             return null;
         }
 

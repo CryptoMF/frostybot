@@ -58,14 +58,14 @@
         private function _parseURL() {
             $this->type = "URL";
             // Check that request is coming from an authorised Trading View IP or a whitelisted IP
-            
+
             whitelist::validate($_SERVER['REMOTE_ADDR']);
             //$tradingview = ['52.89.214.238','34.212.75.30','54.218.53.128','52.32.178.7'];
-            //$whitelist = array_merge($tradingview, whitelist);     
+            //$whitelist = array_merge($tradingview, whitelist);
             //if (isset($_SERVER['REMOTE_ADDR']) && (!in_array($_SERVER['REMOTE_ADDR'], $whitelist))) {
             //  logger::error('Request received from invalid address: ' . $_SERVER['REMOTE_ADDR']);
             //}
-            
+
             $rawPostText = file_get_contents('php://input');
             $postArgs = [];
             if (isset($_GET['command'])) {
@@ -98,13 +98,13 @@
                     $this->params['stub'] = strtolower($stub);
                     $this->params['command'] = strtolower($command);
                     array_shift($postArgs);
-                } 
+                }
                 $params = $postArgs;
                 foreach($params as $param) {
                     list($key, $value) = explode("=", $param);
                     $this->params[strtolower($key)] = $value;
                 }
-            } 
+            }
         }
 
         // Parse CLI parameters
@@ -228,6 +228,10 @@
                         case 'LONG'         :   $result = $this->exchange->long(requiredParams($this->params,['symbol','size']));
                                                 break;
                         case 'SHORT'        :   $result = $this->exchange->short(requiredParams($this->params,['symbol','size']));
+                                                break;
+                        case 'RISKLONG'      :  $result = $this->exchange->risk_long(requiredParams($this->params,['symbol','risk', 'stoptrigger']));
+                                                break;
+                        case 'RISKSHORT'     :  $result = $this->exchange->risk_short(requiredParams($this->params,['symbol','risk', 'stoptrigger']));
                                                 break;
                         case 'CLOSE'        :   $result = $this->exchange->close(requiredParams($this->params,['symbol']));
                                                 break;

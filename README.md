@@ -17,17 +17,17 @@ The way it works is simple:
 
 * FrostyAF from the [Krown's Crypto Cave Discord group](https://discordapp.com/invite/hzKU7qe)
 * Barnz from the [Krown's Crypto Cave Discord group](https://discordapp.com/invite/hzKU7qe)
-            
+
 ## Dedication
 
 Dedicated to @christiaan's mom, not only is she hot, but she's a classy lady too.
 
 ## Disclaimer
 Use this bot at your own risk. The authors accept no responsibility for losses incurred through using this software. This is a 0.x release which means it's beta software. So it may and probably will have some bugs. We strongly advise you to use a sub-account with a limited balance, or a testnet account to ensure that the bot is profitable before going live with any strategy. While we have gone to great lengths to test the software, if you do find any bugs, please report them to us and we will sort them out, but if you lose your account, that's on you.
-            
+
 ## Supported Exchanges
 Currently Bitmex, Deribit and FTX exchanges are supported for perpetual and futures markets. For a list of markets supported on your exchange, use the \<exchange\>:markets command. The bot has been extensively tested on these markets, but should work on others as well:
- 
+
 * **Bitmex:**  BTC/USD and ETH/USD
 * **Deribit:** BTC-PERPETUAL and ETH-PERPETUAL
 * **FTX:** BTC-PERP and ETH-PERP
@@ -35,7 +35,7 @@ Currently Bitmex, Deribit and FTX exchanges are supported for perpetual and futu
 We will add more exchanges based on user demand. Keeping the code cross-compatible over all the exchanges is quite complex so we will only consider adding additional exchanges if a significant number of users request it. Bear in mind that this software is free, so we are under no obgligation to add features or provide support, but we will endevour to help out when and where we can. Support can also be found in #the-lab channel on Krown's Crypto Cave Discord community. There are a lot of very knowlegeable guys willing to help out if you need assistance.
 
 ## Scope      
-This bot is specifically designed to execute orders based on webhook alerts received from Tradingview. If you have used Autoview in the past you will understand the concept of converting Tradingview strategies and scripts into executable orders on your exchange. However, unlike Autoview, Frostybot makes use of an external web server (VPS, AWS etc), so does not require your PC to be powered on or your browser to be open for it to work. 
+This bot is specifically designed to execute orders based on webhook alerts received from Tradingview. If you have used Autoview in the past you will understand the concept of converting Tradingview strategies and scripts into executable orders on your exchange. However, unlike Autoview, Frostybot makes use of an external web server (VPS, AWS etc), so does not require your PC to be powered on or your browser to be open for it to work.
 
 ## Requirements
 In order to use Frostybot, you will need the following:
@@ -70,27 +70,27 @@ Its recommended to use sub-accounts to limit risk. First follow the instructions
       ./frostybot config stub=deribitdemo exchange=deribit apiKey="<your api key>" secret="<your api secret>" description="Deribit Test Account" testnet=true
 
   The **stub** parameter can be anything you like, as long as it's alphanumeric with no spaces. You will use the **stub** when sending commands to the bot, so make it something short and simple. I've just called it "deribitdemo", but if you wanted to use 2 accounts on deribit, you could call the one stub "deribitmain" and the other one "deribittest" for example, it's entirely up to you.
-  
+
   The **exchange** parameter can be ftx, bitmex or deribit, depending on which exchange you use. The **apiKey** and **secret** are self explanatory, simply add your own api key and secret there (Important: notice the uppercase K in apiKey, it's important to keep it like that). The **description** field can be anything you like, but if you use spaces remember to enclose it in "quotes". Lastly, the **testnet** parameter just lets the bot know which network to connect to. If you want to test it out for a bit, create an api key on the testnet and try it out. The testnet parameter only works for Deribit and Bitmex, because FTX does not have a testnet.
-  
+
   Lastly, if you are using the FTX exchange, and you are using a subaccount, please also add **subaccount**="\<sub account name\>". This is required by the FTX API, and it will not work until you add it to the config, but only if you're using subaccounts.
-  
+
 * You can list your current config by using the following command:
 
        ./frostybot config
-       
+
   If you would like to remove a config, use the command like this:
-  
+
        ./frostybot config stub=deribitdemo delete=true
-  
+
   If you just want to update an existing config, just rerun the config command with the same stub name and the other values will be updated.
 
-* Using the deribitdemo config I made above, some example command syntax would be as follows: 
-    
+* Using the deribitdemo config I made above, some example command syntax would be as follows:
+
       deribitdemo:long size=5000 price=8000 symbol=BTC-PERPETUAL  (This example provides the symbol on the commandline)
       deribitdemo:short size=5000 price=8000 symbol=BTCUSD        (This example uses a symbol mapping in the config to convert BTCUSD to BTC-PERPETUAL)
       deribitdemo:short size=5000 price=8000                      (This example uses the "default" symbol mapping in the config which is mapped to BTC-PERPETUAL)    
-    
+
 *Note:* The order size is always in USD, and the symbol is required for most exchange-specific commands (unless a default symbol mapping has been provided in the config file, in which case that default symbol will be used if no symbol is provided in the command).
 
 To get a list of supported symbols for an exchange, use the following command:
@@ -113,19 +113,19 @@ To get a list of supported symbols for an exchange, use the following command:
 *Note:* This error is expected, but its a good way to check if your bot is responding over http/https. You will receive this specific error because the bot has built-in security that will only accept http/https requests from Tradingview's servers. You can still communicate directly with Frostybot using CLI commands. If you need to communicate to the bot over http, you will need to add your IP address into the "whitelist" by using the following command:
 
         ./frostybot whitelist add="<ip address>" description="An optional description for your own info"
-       
+
 By default, only Tradingview's servers have access over http/https. Any other machines that you want to allow to access the bot will need to be added to the whitelist. If you want to remove an IP address from the whitelist, use this command:
 
         ./frostybot whitelist delete="<ip address>"
 
-Note that you cannot delete the default Tradingview addresses in the whitelist, as they are protected against deletion. 
+Note that you cannot delete the default Tradingview addresses in the whitelist, as they are protected against deletion.
 
 Once you've confirmed that Frostybot is responding over the internet, you can start creating Tradingview alerts:
 
 * In Tradingview, create a new alert.
 * The Webhook URL should point to your bot address.
 * The message box of the Tradingview alert should have the bot command(s), here are some exmaples:
-         
+
 **Tradingview Alert Messagebox Examples:**
 
     deribit:long symbol=BTC-PERPETUAL size=1000         ($1000 market buy on Deribit BTC-PERPETUAL)
@@ -134,13 +134,13 @@ Once you've confirmed that Frostybot is responding over the internet, you can st
     ftx:close size=50% symbol=ETH-PERP                  (Market close 50% of oposition on FTX ETH-PERP)
     deribit:close symbol=ETH-PERPETUAL                  (Close entire ETH-PERPETUAL position on Deribit)
     ftx:short size=200% symbol=BTC-PERP                 (Market sell 200% of your account / 2x short)
-      
+
 *NOTE:* Anything in the message box of the Tradingview alert is interpreted as a command, so do not use the message box for a general description! Also note, you can provide multiple commands in the message box, as long as they are each on a new line. For example, you can close all your open stop loss orders before entering a new position.
 
 Here is an example of a Tradingview alert showing multiple commands:
 
 ![TV Alert](https://i.imgur.com/p8YFTah.png)
-     
+
 Once you have found a winning strategy (or made your own using Pinescript on Tradingview), you can set up multiple alerts for long, short, and close (takeprofit/stoploss) orders and let Tradingview and Frostybot fully automate your trading!
 
 *Sample study in Tradingview showing buy, sell and take profit alert points*
@@ -150,10 +150,10 @@ Once you have found a winning strategy (or made your own using Pinescript on Tra
 *List of tradingview alerts showing long, short and take profit orders*
 
 ![List of alert](https://i.imgur.com/qM4OwFJ.png)
-     
-**CLI Examples:** 
 
-Other than Tradingview firing off webhooks, you can also communicate manually with Frostybot using the commandline interface (CLI). Here are some CLI examples that you can try out. 
+**CLI Examples:**
+
+Other than Tradingview firing off webhooks, you can also communicate manually with Frostybot using the commandline interface (CLI). Here are some CLI examples that you can try out.
 
     ./frostybot deribit:long symbol=BTC-PERPETUAL size=1000     ($1000 market buy on Deribit BTC-PERPETUAL)
     ./frostybot ftx:short symbol=BTC-PERP size=2000 price=7600  ($2000 limit sell at $7600 on FTX BTC-PERP)
@@ -187,11 +187,11 @@ Other than Tradingview firing off webhooks, you can also communicate manually wi
 
 This command will create a limit-entry, market-stop-loss, limit-take-profit order combo.
 NOTE: Both limit entries are NOT a reduce-only unless a reduce=true is used and the exchange supports it (FTX only):
-    
+
     ./frostybot deribit:long price=9593 stoptrigger=9500 profittrigger=9750    
-    
+
 To workaround this limitation, you can use stop-market/reduce-only order for both stop-loss and take-profit on Deribit. This command will create a limit-entry, market-stop-loss (reduce-only) and market-take-profit (reduce-only) order. Assuming the market price is in between the 9500 and 9800, the correct market stop-loss orders should be placed as the bot will calculate the direction of the order based on the market price.
-    
+
     ./frostybot deribit:long size=1000 price=9550
     ./frostybot deribit:stoploss size=1000 stoptrigger=9500 reduce=true
     ./frostybot deribit:stoploss size=1000 stoptrigger=9800 reduce=true
@@ -199,10 +199,24 @@ To workaround this limitation, you can use stop-market/reduce-only order for bot
 This example will create a set of 5 orders spread out within the provided price range:
 
     ./frostybot deribit:long size=1000 price=9550,9600
-    
+
 To ask for a specific number of orders, use a 3rd argument after the price range which stands for quantity:
 
     ./frostybot deribit:long size=1000 price=9550,9600,3
+
+**Entry/Stop trade based on predefined risk:**
+
+The *risklong* and *riskshort* commands will let you set up an entry/stop-loss trade using a predefined risk (either a percentage of the account or dollar amount). Below examples show a long entry that will automatically calculate the size based on the risk (10% of the account or 50 USD respectively):
+
+    ./frostybot deribit:risklong risk=10% price=9545 stoptrigger=9445 reduce=true
+    ./frostybot deribit:risklong risk=50 price=9545 stoptrigger=9445 reduce=true
+
+You can still use the relative price (by adding +/-). Also, you can skip the *price* variable to enter with a market order, e.g.:
+
+    ./frostybot deribit:risklong risk=10% price=-100 stoptrigger=-200 reduce=true
+    ./frostybot deribit:risklong risk=10% stoptrigger=-200 reduce=true
+
+NOTE: The relative price is always based of the current market price, so make sure that stoptrigger is not closer to the price than the entry.
 
 ## Report Bugs
 
