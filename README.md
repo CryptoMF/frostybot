@@ -206,15 +206,15 @@ To ask for a specific number of orders, use a 3rd argument after the price range
 
 **Entry/Stop trade based on predefined risk:**
 
-The *risklong* and *riskshort* commands will let you set up an entry/stop-loss trade using a predefined risk (either a percentage of the account or dollar amount). Below examples show a long entry that will automatically calculate the size based on the risk (10% of the account or 50 USD respectively):
+The *long* and *short* commands will also let you set up an entry/stop-loss trade using a predefined risk (either a percentage of the account or dollar amount). Below examples show a long entry that will automatically calculate the size based on the risk (which is 10% of the account and 50 USD respectively):
 
-    ./frostybot deribit:risklong risk=10% price=9545 stoptrigger=9445 reduce=true
-    ./frostybot deribit:risklong risk=50 price=9545 stoptrigger=9445 reduce=true
+    ./frostybot deribit:long risk=10% price=9545 stoptrigger=9445 reduce=true
+    ./frostybot deribit:long risk=50 price=9545 stoptrigger=9445 reduce=true
 
 You can still use the relative price (by adding +/-). Also, you can skip the *price* variable to enter with a market order, e.g.:
 
-    ./frostybot deribit:risklong risk=10% price=-100 stoptrigger=-200 reduce=true
-    ./frostybot deribit:risklong risk=10% stoptrigger=-200 reduce=true
+    ./frostybot deribit:long risk=10% price=-100 stoptrigger=-200 reduce=true
+    ./frostybot deribit:long risk=10% stoptrigger=-200 reduce=true
 
 NOTE: The relative price is always based of the current market price, so make sure that stoptrigger is not closer to the price than the entry.
 
