@@ -15,8 +15,13 @@ The way it works is simple:
 
 ## Authors
 
-* FrostyAF from the [Krown's Crypto Cave Discord group](https://discordapp.com/invite/hzKU7qe)
-* Barnz from the [Krown's Crypto Cave Discord group](https://discordapp.com/invite/hzKU7qe)
+Developers listed below can normally be found lurking in #the-lab on [Krown's Crypto Cave Discord group](https://discordapp.com/invite/hzKU7qe):
+
+* FrostyAF
+* Barnz
+* SemiQuasi
+
+We kindly ask that you fully read the documentation before requesting any support, as most of the questions we get asked are already well documented.
 
 ## Dedication
 
