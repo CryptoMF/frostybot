@@ -508,11 +508,11 @@
           }
 
           $size = null;
-
           if (isset($params['size'])) {
             $size = $this->get_absolute_size($params['size']);
           }
           else if (isset($params['risk']) and isset($params['stoptrigger'])) {
+            $symbol = $params['symbol'];
             $stoptrigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
             $size = $this->calculate_size_from_risk($symbol, $params['risk'], $stoptrigger, $price);
           }
