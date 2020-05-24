@@ -383,7 +383,7 @@
         }
 
         // Calculate size based on the risk and price difference
-        private function calculate_risk_size($symbol, $risk, $stopprice, $entryprice) {
+        private function calculate_size_from_risk($symbol, $risk, $stopprice, $entryprice) {
           if (strtolower(substr($risk,-1)) == '%') {             // risk given in %
             $multiplier = str_replace('%','',strtolower($risk)) / 100;
             $risk_usd = $this->total_balance_usd() * $multiplier;
@@ -416,25 +416,10 @@
         private function trade($direction, $params) {
             $stub = $params['stub'];
             $symbol = $params['symbol'];
+            $size = $params['size'];                                            // The size should be an absolute value
             $market = $this->market(['symbol' => $symbol]);
             $price = isset($params['price']) ? $this->average_price($symbol, $params['price']) : null;
             $type = is_null($price) ? 'market' : 'limit';
-
-            if (isset($params['size'])) {
-              $size = $this->get_absolute_size($params['size']);
-            }
-            else if (isset($params['risk']) and isset($params['stoptrigger'])) {
-              $stoptrigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
-              $size = $this->calculate_risk_size($symbol, $params['risk'], $stoptrigger, $price);
-            } else {
-              logger::error('Trade function received incorrect parameters.');
-              return false;
-            }
-
-            if (is_null($size)) {
-              logger::error('Unable to determine the size of the trade.');
-              return false;
-            }
 
             $requestedSize = $this->convert_size($size, $symbol, $price);                               // Requested size in contracts
             $position = $this->position(['symbol' => $symbol, 'suppress' => true]);
@@ -453,6 +438,7 @@
                     }
                 }
             }
+
             $side = ($direction == "long" ? "buy" : "sell");
             if ($requestedSize > 0) {
                 $orderParams = [
@@ -506,24 +492,51 @@
             return false;
         }
 
+        // Calculates the size for relative price or based on the risk level. Returns absolute price.
+        private function calculate_trade_size($params) {
+          if (isset($params['risk']) and isset($params['size'])) {
+              logger::error("The 'risk' and 'size' parameters are mutually exclusive.");
+          }
+          if (!(isset($params['risk']) or isset($params['size']))) {
+              logger::error("Either 'risk' or 'size' parameter is mandatory for executing a trade.");
+          }
+
+          if (isset($params['risk'])) {
+            if (!isset($params['stoptrigger'])) {
+              logger::error("Risk calculation requires 'stoptrigger' parameter.");
+            }
+          }
+
+          $size = null;
+
+          if (isset($params['size'])) {
+            $size = $this->get_absolute_size($params['size']);
+          }
+          else if (isset($params['risk']) and isset($params['stoptrigger'])) {
+            $stoptrigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
+            $size = $this->calculate_size_from_risk($symbol, $params['risk'], $stoptrigger, $price);
+          }
+          else {
+            logger::error("Incorrect trade parameters supplied.");
+          }
+
+          if (is_null($size)) {
+            logger::error('Unable to determine the size of the trade.');
+          }
+
+          return $size;
+        }
+
         // Long Trade (Limit or Market, depending on if you supply the price parameter)
         public function long($params) {
-            return $this->trade('long', $params);
+          $params['size'] = $this->calculate_trade_size($params);
+          return $this->trade('long', $params);
         }
 
         // Short Trade (Limit or Market, depending on if you supply the price parameter)
         public function short($params) {
-            return $this->trade('short', $params);
-        }
-
-        // Risk Manageded Long Trade (Limit or Market, depending on if you supply the price parameter)
-        public function risk_long($params) {
-            return $this->trade('long', $params);
-        }
-
-        // Risk Manageded Short Trade (Limit or Market, depending on if you supply the price parameter)
-        public function risk_short($params) {
-            return $this->trade('short', $params);
+          $params['size'] = $this->calculate_trade_size($params);
+          return $this->trade('short', $params);
         }
 
         // Submit an order the exchange

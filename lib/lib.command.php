@@ -225,13 +225,9 @@
                                                 break;
                         case 'CANCELALL'    :   $result = $this->exchange->cancel(requiredParams(array_merge($this->params,['id'=>'all']),['id','symbol']));
                                                 break;
-                        case 'LONG'         :   $result = $this->exchange->long(requiredParams($this->params,['symbol','size']));
+                        case 'LONG'         :   $result = $this->exchange->long(requiredParams($this->params,['symbol']));
                                                 break;
-                        case 'SHORT'        :   $result = $this->exchange->short(requiredParams($this->params,['symbol','size']));
-                                                break;
-                        case 'RISKLONG'      :  $result = $this->exchange->risk_long(requiredParams($this->params,['symbol','risk', 'stoptrigger']));
-                                                break;
-                        case 'RISKSHORT'     :  $result = $this->exchange->risk_short(requiredParams($this->params,['symbol','risk', 'stoptrigger']));
+                        case 'SHORT'        :   $result = $this->exchange->short(requiredParams($this->params,['symbol']));
                                                 break;
                         case 'CLOSE'        :   $result = $this->exchange->close(requiredParams($this->params,['symbol']));
                                                 break;
