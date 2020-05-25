@@ -514,6 +514,7 @@
           else if (isset($params['risk']) and isset($params['stoptrigger'])) {
             $symbol = $params['symbol'];
             $stoptrigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
+            $price = isset($params['price']) ? $this->average_price($symbol, $params['price']) : null;
             $size = $this->calculate_size_from_risk($symbol, $params['risk'], $stoptrigger, $price);
           }
           else {
