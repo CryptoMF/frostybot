@@ -149,6 +149,7 @@ maximum position size (which we wanted).</li>
 <li>the close command now accepts an optional price= paramter to close positions using limit orders</li>
 <li>added ability to express order price in relation to market price (eg: price=-20 would place the order $20 below the current market price using a limit order). This also works for the stoptrigger and profittrigger parameters.</li>
 <li>added support for order layering (eg: price=8000,8100,5 would place 5 limit orders equally between the $8000 and $8100 price levels). Relative prices can also be used (eg. price=+100,200,10 would place 10 limit orders equally between $100 and $200 above current market price and price=-200,300,5 would place 5 limit orders equally between $200 to $300 under current market price). This only currently works for long, short and close commands (not take profit or stop loss). The size=xxx parameter is split equally among the orders, to they will all total up to whatever the size is.<br /><b>Note:</b> BE CAREFUL with this on Bitmex, as placing many small orders will get your account marked as spam and eventually disabled.</li>
+      <li>added ability to automatically calculate the long and short trade size based on provided risk and stop price parameters.</li>
       </ul>
 </tr>
 <tr>
