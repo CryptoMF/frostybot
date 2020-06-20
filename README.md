@@ -15,7 +15,7 @@ The way it works is simple:
 
 ## Authors
 
-Developers listed below can normally be found lurking in #the-lab on [Krown's Crypto Cave Discord group](https://discordapp.com/invite/hzKU7qe):
+Developers listed below can normally be found on the [FrostyBot Discord Server](https://discord.gg/5WGepv). They are also known to frequent #the-lab channel on [Krown's Crypto Cave Discord Server](https://discordapp.com/invite/hzKU7qe):
 
 * FrostyAF
 * Barnz
@@ -222,6 +222,21 @@ You can still use the relative price (by adding +/-). Also, you can skip the *pr
     ./frostybot deribit:long risk=10% stoptrigger=-200 reduce=true
 
 NOTE: The relative price is always based of the current market price, so make sure that stoptrigger is not closer to the price than the entry.
+
+**Simple Buy/Sell Commands and Order Pyramiding:**
+
+    ./frostybot deribit:long size=+2000 maxsize=10000
+    ./frostybot deribit:long size=-10000 maxsize=50000
+    ./frostybot deribit:short size=+500 price=+50 maxsize=5000
+    ./frostybot deribit:short size=-1000 price=+50 maxsize=5000
+
+The size parameter for long and short commands can be given in relative terms. For example, size=+1000 will increase current position by $1000, or size=-500 will decrease current position size by $500. You can also provide the optional maxsize parameter (highly recommended) to limit the maximum total position size, for example a long command, which size=+1000 maxsize=10000, when executed sequentially, will increase your long position by $1000 each time the command is executed, up to a maximum of $10000. Likewise, a short command with size=+1000 maxsize=10000, when executed sequentially will increase your short position by $1000 each time the command is executed, to a maximum of $10000. Using negative numbers for the size parameter will decrease your long or short position size, down to zero, but will not flip your position if the size goes below zero. These commands are useful for pyramiding, but to not support and stoptrigger or profittrigger paramters. Your stop losses and take profit orders must be managed separately.
+
+    ./frostybot deribit:buy size=2000 maxsize=10000
+    ./frostybot deribit:sell size=10000 maxsize=50000 price=4000
+    ./frostybot deribit:buy size=1000 maxsize=20000 price=-100
+
+The buy and sell commands create simple buy and sell orders on the exchange. Only the size, maxsize (optional) and price (optional) parameters are supported. If the resulting buy or sell command would cause your position size to exceed the maxsize parameter, the order size will be automatically adjusted to ensure that your position never exceeds maxsize, be it a long position or a short position. Please note that when using the buy and sell commands, you cannot use relative numbers for the size parameter. The size parameter must be a positive absolute number indicating the size of the buy or sell order in USD. If you execute a sell command that takes your long position below zero, you will be automatically flipped to a short position. These commands are useful for pyramiding, but to not support and stoptrigger or profittrigger paramters. Your stop losses and take profit orders must be managed separately.
 
 ## Report Bugs
 
