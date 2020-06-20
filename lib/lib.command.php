@@ -229,6 +229,10 @@
                                                 break;
                         case 'SHORT'        :   $result = $this->exchange->short(requiredParams($this->params,['symbol']));
                                                 break;
+                        case 'BUY'          :   $result = $this->exchange->buy(requiredParams($this->params,['symbol', 'size']));
+                                                break;
+                        case 'SELL'         :   $result = $this->exchange->sell(requiredParams($this->params,['symbol', 'size']));
+                                                break;
                         case 'CLOSE'        :   $result = $this->exchange->close(requiredParams($this->params,['symbol']));
                                                 break;
                         case 'STOPLOSS'     :   $result = $this->exchange->stoploss(requiredParams($this->params,['symbol','stoptrigger']));

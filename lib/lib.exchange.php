@@ -290,7 +290,7 @@
         }
 
         // Get current position size in number of contracts (as opposed to USD)
-        private function position_size($symbol) {
+        private function position_size_contracts($symbol) {
             $position = $this->position(['symbol' => $symbol, 'suppress' => true]);
             $market = $this->market(['symbol' => $symbol]);
             if (is_object($position)) {           // If already in a position
@@ -299,6 +299,25 @@
                 return (strtolower($this->normalizer->orderSizing) == 'quote' ? $quoteSize : $baseSize);
             }
             return 0;
+        }
+
+        // Get current position size in USD (as opposed to contracts)
+        private function position_size_usd($symbol) {
+            $position = $this->position(['symbol' => $symbol, 'suppress' => true]);
+            $market = $this->market(['symbol' => $symbol]);
+            if (is_object($position)) {           // If already in a position
+                $quoteSize = $position->size_quote;
+                $baseSize = $position->size_base;
+                return (strtolower($this->normalizer->orderSizing) == 'quote' ? $quoteSize : $baseSize);
+            }
+            return 0;
+        }
+
+        // Get current directional position size in USD (negative if currently short, positive if currently long)
+        private function position_size_directional($symbol) {
+            $currentDir = $this->position_direction($symbol);
+            $positionSizeUsd = $this->position_size_usd($symbol);
+            return $currentDir !== false ? ($currentDir == 'long' ? $positionSizeUsd : 0 - $positionSizeUsd) : 0;
         }
 
         // Get current position direction (long or short)
@@ -371,73 +390,147 @@
 
         // Calculate the absolute price in case it is a percentage or multiplier of total balance
         private function get_absolute_size($size) {
-          if (strtolower(substr($size,-1)) == 'x') {             // Position size given in x
-              $multiplier = str_replace('x','',strtolower($size));
-              return $this->total_balance_usd() * $multiplier;
-          }
-          if (strtolower(substr($size,-1)) == '%') {             // Position size given in %
-              $multiplier = str_replace('%','',strtolower($size)) / 100;
-              return $this->total_balance_usd() * $multiplier;
-          }
-          return $size;
+            if (strtolower(substr($size,-1)) == 'x') {             // Position size given in x
+                $multiplier = str_replace('x','',strtolower($size));
+                return $this->total_balance_usd() * $multiplier;
+            }
+            if (strtolower(substr($size,-1)) == '%') {             // Position size given in %
+                $multiplier = str_replace('%','',strtolower($size)) / 100;
+                return $this->total_balance_usd() * $multiplier;
+            }
+            return $size;
         }
 
         // Calculate size based on the risk and price difference
         private function calculate_size_from_risk($symbol, $risk, $stopprice, $entryprice) {
-          if (strtolower(substr($risk,-1)) == '%') {             // risk given in %
-            $multiplier = str_replace('%','',strtolower($risk)) / 100;
-            $risk_usd = $this->total_balance_usd() * $multiplier;
-          }
-          else {
-            $risk_usd = $risk;
-          }
-
-          if (is_null($entryprice)) {
-            $market = $this->market(['symbol' => $symbol]);
-            if ($stopprice  > $market->ask) {
-              $entryprice = $market->ask;
-            }
-            else if ($stopprice < $market->bid) {
-              $entryprice = $market->bid;
+            if (strtolower(substr($risk,-1)) == '%') {             // risk given in %
+                $multiplier = str_replace('%','',strtolower($risk)) / 100;
+                $risk_usd = $this->total_balance_usd() * $multiplier;
             }
             else {
-              logger::error('Unable to calculate the entry price, stop price is within spraed.');
-              return null;
+                $risk_usd = $risk;
             }
-          }
 
-          $size_usd = $risk_usd / abs($entryprice - $stopprice);
-          $size = $size_usd * $entryprice;
+            if (is_null($entryprice)) {
+                $market = $this->market(['symbol' => $symbol]);
+                if ($stopprice  > $market->ask) {
+                    $entryprice = $market->ask;
+                }
+                else if ($stopprice < $market->bid) {
+                    $entryprice = $market->bid;
+                }
+                else {
+                    logger::error('Unable to calculate the entry price, stop price is within spraed.');
+                    return null;
+                }
+            }
 
-          return $size;
+            $size_usd = $risk_usd / abs($entryprice - $stopprice);
+            $size = $size_usd * $entryprice;
+
+            return $size;
         }
 
         // Perform Trade
         private function trade($direction, $params) {
             $stub = $params['stub'];
             $symbol = $params['symbol'];
-            $size = $params['size'];                                            // The size should be an absolute value
             $market = $this->market(['symbol' => $symbol]);
             $price = isset($params['price']) ? $this->average_price($symbol, $params['price']) : null;
+            $maxSize = isset($params['maxsize']) ? $params['maxsize'] : null;
             $type = is_null($price) ? 'market' : 'limit';
 
-            $requestedSize = $this->convert_size($size, $symbol, $price);                               // Requested size in contracts
-            $position = $this->position(['symbol' => $symbol, 'suppress' => true]);
-            $positionSize = $this->position_size($symbol);                                              // Position size in contracts
-            $currentDir = $this->position_direction($symbol);                                           // Current position direction (long or short)
-            if ($positionSize != 0) {                                                                   // If already in a position
-                if ($direction != $currentDir) {
-                    $requestedSize += $positionSize;                                                    // Flip position if required
-                }
-                if ($direction == $currentDir) {
-                    if ($requestedSize > $positionSize) {
-                        $requestedSize -= $positionSize;                                                // Extend position if required
-                    } else {
-                        $requestedSize = 0;
-                        logger::warning('Already '.$direction.' more contracts than requested');        // Prevent PineScript from making you poor
-                    }
+            $positionSizeCon = $this->position_size_contracts($symbol);             // Position size in contracts
+            $positionSizeUsd = $this->position_size_usd($symbol);                   // Position size in USD
+            $currentDir = $this->position_direction($symbol);                       // Current position direction (long or short)
+
+            $size = $params['size'];                                                // The size should be an absolute or relative value
+            $sizeType = in_array($size[0], ['-','+']) ? 'relative' : 'absolute';    // Check if size is relative or absolute            
+            if (($direction != $currentDir) && ($sizeType == 'relative')) {         // If the size type is relative, but switching direction, make the size type absolute
+                if ($currentDir !== false) {
+                    $size = $this->get_absolute_size(substr($size,1));                 
+                    $sizeType = 'absolute';
                 }
             }
+
+            // ----------------------------------------------------------
+            // Size relative to current position provided (size=+xxx or size=-xxx)
+            // ----------------------------------------------------------
+            if ($sizeType == "relative") {               
+                $operator = $size[0];
+                $size = $this->get_absolute_size(substr($size,1));                  // Make trade size absolute
+                // Increase position
+                if ($operator == '+') {
+                    // Nothing to adjust, will just increase position size
+                }
+                // Decrease position
+                if ($operator == '-') {
+                    $direction = ($direction == "long" ? "short" : "long");         // Switch direction if decreasing size
+                    if ($positionSizeUsd - $size < 0) {
+                        if ($positionSizeUsd > 0) {
+                            $size = $positionSizeUsd;                               // Close position if size is negative
+                            logger::warning('Size greater than current position, closing position'); 
+                        } else {
+                            $size = 0;                                              // Don't execute negative order if not in a position
+                            logger::error('Cannot reduce position when not in a position'); 
+                        }
+                    }
+                }
+                if ((!is_null($maxSize)) && ($size > 0))  {
+                    $resultSize = $positionSizeUsd + ($operator == '-' ? 0 - $size : $size);
+                    if ($resultSize > $maxSize) {
+                        $size = ($operator == '-' ? $size + ($resultSize  - $maxSize) : $maxSize - $positionSizeUsd);
+                        logger::debug('Position size limit: '.$maxSize.", Resultant position size: ".$resultSize.", Adjusted size: ".$size); 
+                        if ($size < 0) {
+                            $size = abs($size);
+                            $operator = '-';
+                            //$size = 0;
+                        }
+                        if ($size > 0) {
+                            logger::warning('Order size would exceed maximum position size, adjusting order size to '.$size.'.'); 
+                        }
+                        if (round($size) == 0) {
+                            logger::error('Maximum position size reached, order not permitted.'); 
+                        }
+                    }
+                }
+                if (isset($params['stoptrigger'])) {
+                    logger::warning('Stoptrigger not supported when using relative size orders, ignoring...');  
+                    unset($params['stoptrigger']);
+                }
+                if (isset($params['profittrigger'])) {
+                    logger::warning('Profittrigger not supported when using relative size orders, ignoring...');  
+                    unset($params['profittrigger']);
+                }
+                logger::debug('Relative size parameter calculated as '.$size);
+                $requestedSize = $this->convert_size($size, $symbol, $price);       // Requested size in contracts
+            }
+            // ----------------------------------------------------------
+
+
+            // ----------------------------------------------------------
+            // Absolute trade size provided (size=xxx or size=xxx)
+            // ----------------------------------------------------------
+            if ($sizeType == "absolute") {
+                $size = $this->get_absolute_size($size);                                                // Make trade size absolute
+                $requestedSize = $this->convert_size($size, $symbol, $price);                           // Requested size in contracts
+                $position = $this->position(['symbol' => $symbol, 'suppress' => true]);
+                if ($positionSizeCon != 0) {                                                            // If already in a position
+                    if ($direction != $currentDir) {
+                        $requestedSize += $positionSizeCon;                                             // Flip position if required
+                    }
+                    if ($direction == $currentDir) {
+                        if ($requestedSize > $positionSizeCon) {
+                            $requestedSize -= $positionSizeCon;                                         // Extend position if required
+                        } else {
+                            $requestedSize = 0;
+                            logger::warning('Already '.$direction.' more contracts than requested');    // Prevent PineScript from making you poor
+                        }
+                    }
+                }
+                logger::debug('Absolute size parameter calculated as '.$size);
+            }
+            // ----------------------------------------------------------
 
             $side = ($direction == "long" ? "buy" : "sell");
             if ($requestedSize > 0) {
@@ -452,7 +545,7 @@
                 $orderResult = $this->submit_order($orderParams);
                 $balance = $this->total_balance_usd();
                 $comment = isset($params['comment']) ? $params['comment'] : 'None';
-                logger::info('TRADE:'.strtoupper($direction).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
+                logger::info('TRADE | Direction: '.strtoupper($side).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
                 if ((isset($params['stoptrigger'])) || (isset($params['profittrigger']))) {
                     if (is_a($orderResult,'linkedOrderObject')) {
                         $linkedOrder = $orderResult;
@@ -494,50 +587,121 @@
 
         // Calculates the size for relative price or based on the risk level. Returns absolute price.
         private function calculate_trade_size($params) {
-          if (isset($params['risk']) and isset($params['size'])) {
-              logger::error("The 'risk' and 'size' parameters are mutually exclusive.");
-          }
-          if (!(isset($params['risk']) or isset($params['size']))) {
-              logger::error("Either 'risk' or 'size' parameter is mandatory for executing a trade.");
-          }
-
-          if (isset($params['risk'])) {
-            if (!isset($params['stoptrigger'])) {
-              logger::error("Risk calculation requires 'stoptrigger' parameter.");
+            if (isset($params['risk']) and isset($params['size'])) {
+                logger::error("The 'risk' and 'size' parameters are mutually exclusive.");
             }
-          }
+            if (!(isset($params['risk']) or isset($params['size']))) {
+                logger::error("Either 'risk' or 'size' parameter is mandatory for executing a trade.");
+            }
 
-          $size = null;
-          if (isset($params['size'])) {
-            $size = $this->get_absolute_size($params['size']);
-          }
-          else if (isset($params['risk']) and isset($params['stoptrigger'])) {
-            $symbol = $params['symbol'];
-            $stoptrigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
-            $price = isset($params['price']) ? $this->average_price($symbol, $params['price']) : null;
-            $size = $this->calculate_size_from_risk($symbol, $params['risk'], $stoptrigger, $price);
-          }
-          else {
-            logger::error("Incorrect trade parameters supplied.");
-          }
+            if (isset($params['risk'])) {
+                if (!isset($params['stoptrigger'])) {
+                    logger::error("Risk calculation requires 'stoptrigger' parameter.");
+                }
+            }
 
-          if (is_null($size)) {
-            logger::error('Unable to determine the size of the trade.');
-          }
+            $size = null;
+            if (isset($params['size'])) {
+                $size = (string) $params['size'];
+            }
+            else if (isset($params['risk']) and isset($params['stoptrigger'])) {
+                $symbol = $params['symbol'];
+                $stoptrigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
+                $price = isset($params['price']) ? $this->average_price($symbol, $params['price']) : null;
+                $size = $this->calculate_size_from_risk($symbol, $params['risk'], $stoptrigger, $price);
+            }
+            else {
+                logger::error("Incorrect trade parameters supplied.");
+            }
 
-          return $size;
+            if (is_null($size)) {
+                logger::error('Unable to determine the size of the trade.');
+            }
+
+            return $size;
         }
 
         // Long Trade (Limit or Market, depending on if you supply the price parameter)
         public function long($params) {
-          $params['size'] = $this->calculate_trade_size($params);
-          return $this->trade('long', $params);
+            $params['size'] = $this->calculate_trade_size($params);
+            return $this->trade('long', $params);
         }
 
         // Short Trade (Limit or Market, depending on if you supply the price parameter)
         public function short($params) {
-          $params['size'] = $this->calculate_trade_size($params);
-          return $this->trade('short', $params);
+            $params['size'] = $this->calculate_trade_size($params);
+            return $this->trade('short', $params);
+        }
+
+
+        // Simple buy or sell trade (Only paramters allowed:  <size=xxx> [price=xxx] [maxsize=xxx] )
+        public function simple_trade($side, $params) {
+            $stub = $params['stub'];
+            $symbol = $params['symbol'];
+            $size = $params['size'];
+            $maxSize = isset($params['maxsize']) ? $params['maxsize'] : null;
+            $market = $this->market(['symbol' => $symbol]);
+            $price = isset($params['price']) ? $this->average_price($symbol, $params['price']) : null;
+            if ((!is_numeric($size)) || ($size < 0)) {
+                logger::error('Size parameter must be a positive value in USD.'); 
+                return false;
+            }
+            if ((!is_numeric($maxSize)) || ($maxSize < 0)) {
+                logger::error('Maxsize parameter must be a positive value in USD.'); 
+                return false;
+            }
+            if ((!is_null($price)) && ($params['price'] < 0)) {
+                logger::error('Price parameter must be a positive value in USD.'); 
+                return false;
+            }
+            if (isset($params['stoptrigger'])) {
+                logger::warning('Stoptrigger not supported when using simple buy/sell orders, ignoring...');  
+                unset($params['stoptrigger']);
+            }
+            if (isset($params['profittrigger'])) {
+                logger::warning('Profittrigger not supported when using simple buy/sell orders, ignoring...');  
+                unset($params['profittrigger']);
+            }
+            $type = is_null($price) ? 'market' : 'limit';
+            $directionSize = $this->position_size_directional($symbol);
+            $resultSize = $directionSize + ($side == 'buy' ? $size : 0 - $size);
+            $directionMaxSize = $resultSize < 0 ? 0 - $maxSize : $maxSize;
+            if ((!is_null($maxSize)) && (abs($resultSize) > $maxSize)) {
+                $size = abs($directionMaxSize - $directionSize);
+                if ($size < 0) {
+                    $size = 0;
+                }
+                logger::debug('Position size limit: '.$directionMaxSize.", Resultant position size: ".$resultSize.", Adjusted size: ".$size); 
+                if ($size == 0) {
+                    logger::error('Maximum position size reached, order not permitted.'); 
+                }
+                if ($size > 0) {
+                    logger::warning('Order size would exceed maximum position size, adjusting order size to '.$size.'.'); 
+                }
+            }
+            $orderParams = [
+                'stub'   => $stub,
+                'symbol' => $symbol,
+                'type'   => is_null($price) ? 'market' : 'limit',
+                'amount' => $this->convert_size($size, $symbol, $price),
+                'side'   => $side,
+                'price'  => (isset($price) ? $price : null)
+            ];
+            $orderResult = $this->submit_order($orderParams);
+            $balance = $this->total_balance_usd();
+            $comment = isset($params['comment']) ? $params['comment'] : 'None';
+            logger::info('TRADE | Direction: '.strtoupper($side).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
+            
+        }
+
+        // Simple Buy Order  (Only size, price and maxsize parameters allowed. Limit or Market, depending on if you supply the price parameter)
+        public function buy($params) {
+            return $this->simple_trade('buy', $params);
+        }
+
+        // Simple Sell Order  (Only size, price and maxsize parameters allowed. Limit or Market, depending on if you supply the price parameter)
+        public function sell($params) {
+            return $this->simple_trade('sell', $params);            
         }
 
         // Submit an order the exchange
@@ -598,7 +762,7 @@
             }
             $params['type'] = isset($params['stopprice']) ? 'sllimit' : 'slmarket';
             $params['side'] = $trigger  > $market->ask ? 'buy' : ($trigger < $market->bid ? 'sell' : null);
-            $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
+            $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size_contracts($params['symbol']);    // Use current position size is no size is provided
             $params['stoptrigger'] = $trigger;
             if (is_null($params['side'])) {                   // Trigger price in the middle of the spread, so can't determine direction
                 logger::error('Could not determine direction of the stop loss order because the trigger price is inside the spread. Adjust the trigger price and try again.');
@@ -622,7 +786,7 @@
             if (isset($params['size'])) {
               $params['size'] = $this->get_absolute_size($params['size']);
             }
-            $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size($params['symbol']);    // Use current position size is no size is provided
+            $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size_contracts($params['symbol']);    // Use current position size is no size is provided
             $params['profittrigger'] = $trigger;
             if (is_null($params['side'])) {                  // Trigger price in the middle of the spread, so can't determine direction
                 logger::error('Could not determine direction of the take profit order because the trigger price is inside the spread. Adjust the trigger price and try again.');
