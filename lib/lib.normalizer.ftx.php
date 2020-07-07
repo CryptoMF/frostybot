@@ -77,7 +77,8 @@
         public function fetch_markets($data) {
             $result = $data->result;
             $markets = [];
-            $marketFilters = ['BEAR','BULL','MOON','DOOM','HEDGE','MOVE'];
+            //$marketFilters = ['BEAR','BULL','MOON','DOOM','HEDGE','MOVE'];
+            $marketFilters = [];
             foreach($result as $market) {
                 if ((in_array($market['type'],['spot','future'])) && ($market['quote'] == 'USD') && ($market['base'] != 'USDT') && ($market['active'] == true)) {
                     $filter = false;
