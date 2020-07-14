@@ -22,7 +22,7 @@
             $balances = [];
             $balances['BTC'] = new balanceObject($currency,$price,$balanceFree,$balanceUsed,$balanceTotal);
             return $balances;
-        } 
+        }
 
         // Get supported OHLCV timeframes
         public function fetch_timeframes() {
@@ -113,7 +113,7 @@
                         //logger::debug('Empty trade resultset, exiting loop...');
                         break;
                     }
-                } 
+                }
                 foreach ($result['result'] as $trade) {
                     $seq = $trade['tradeSeq'];
                     if (array_key_exists($seq, $trades)) {
@@ -166,7 +166,7 @@
                 $market = $this->marketsById[$positionRaw['instrument']];
                 $base = $market->base;
                 $quote = $market->quote;
-                $direction = ($positionRaw['size']  == 0 ? 'flat' : $positionRaw['size'] > 0 ? 'long' : ($positionRaw['size'] < 1 ? 'short' : 'null'));
+                $direction = ($positionRaw['size']  == 0 ? 'flat' : ($positionRaw['size'] > 0 ? 'long' : ($positionRaw['size'] < 1 ? 'short' : 'null')));
                 $baseSize = abs($positionRaw['delta']);
                 $quoteSize = abs($positionRaw['amount']);
                 $entryPrice = $positionRaw['averagePrice'];
