@@ -81,7 +81,7 @@
                 $params = $_GET;
                 unset($params['command']);
                 foreach($params as $key => $value) {
-                    $this->params[strtolower($key)] = $value;
+                    $this->params[strtolower($key)] = str_replace(['“','”'],'',$value);
                 }
             }
             if ($rawPostText !== "") {
@@ -102,7 +102,7 @@
                 $params = $postArgs;
                 foreach($params as $param) {
                     list($key, $value) = explode("=", $param);
-                    $this->params[strtolower($key)] = $value;
+                    $this->params[strtolower($key)] = str_replace(['“','”'],'',$value);
                 }
             }
         }
@@ -128,7 +128,7 @@
             $params = isset($args[2]) ? array_slice($args,2) : [];
             foreach($params as $param) {
                 list($key, $value) = explode("=", $param);
-                $this->params[$key] = $value;
+                $this->params[$key] = str_replace(['“','”'],'',$value);
             }
         }
 
@@ -152,7 +152,7 @@
             $params = isset($args[1]) ? array_slice($args,1) : [];
             foreach($params as $param) {
                 list($key, $value) = explode("=", $param);
-                $this->params[$key] = $value;
+                $this->params[$key] = str_replace(['“','”'],'',$value);
             }
         }
 

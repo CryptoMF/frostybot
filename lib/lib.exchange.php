@@ -547,6 +547,7 @@
                 $comment = isset($params['comment']) ? $params['comment'] : 'None';
                 logger::info('TRADE | Direction: '.strtoupper($side).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
                 if ((isset($params['stoptrigger'])) || (isset($params['profittrigger']))) {
+                    $marketprice = $side == "buy" ? $market->bid : $market->ask;
                     if (is_a($orderResult,'linkedOrderObject')) {
                         $linkedOrder = $orderResult;
                     } else {
@@ -560,6 +561,7 @@
                             'stoptrigger' => $params['stoptrigger'],
                             'stopprice' => (isset($params['stopprice']) ? $params['stopprice'] : null),
                             'size' => (isset($params['stopsize']) ? $params['stopsize'] : $size),
+                            'entryprice' => (!is_null($price) ? $price : $marketprice),
                             'reduce' => (isset($params['reduce']) ? $params['reduce'] : false),
                             'triggertype' => (isset($params['triggertype']) ? $params['triggertype'] : null),
                         ];
@@ -572,6 +574,7 @@
                             'symbol' => $symbol,
                             'profittrigger' => $params['profittrigger'],
                             'size' => (isset($params['profitsize']) ? $params['profitsize'] : $size),
+                            'entryprice' => (!is_null($price) ? $price : $marketprice),
                             'reduce' => (isset($params['reduce']) ? $params['reduce'] : false)
                         ];
                         $tpResult = $this->takeprofit($tpParams);
@@ -760,6 +763,13 @@
             if (isset($params['size'])) {
               $params['size'] = $this->get_absolute_size($params['size']);
             }
+            if (isset($params['entryprice'])) {
+                if ($this->normalizer->orderSizing == 'quote') {
+                    $params['size'] = ($params['size'] / $params['entryprice']) * $price;
+                } else {
+                    $price = $params['entryprice'];
+                }
+            }
             $params['type'] = isset($params['stopprice']) ? 'sllimit' : 'slmarket';
             $params['side'] = $trigger  > $market->ask ? 'buy' : ($trigger < $market->bid ? 'sell' : null);
             $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size_contracts($params['symbol']);    // Use current position size is no size is provided
@@ -781,6 +791,13 @@
             $trigger = $this->get_absolute_price($symbol, $params['profittrigger']);
             $price = isset($params['profitprice']) ? $params['profitprice'] : $trigger;
             $market = $this->normalizer->get_market_by_symbol($symbol);
+            if (isset($params['entryprice'])) {
+                if ($this->normalizer->orderSizing == 'quote') {
+                    $params['size'] = ($params['size'] / $params['entryprice']) * $price;
+                } else {
+                    $price = $params['entryprice'];
+                }
+            }
             $params['type'] = isset($params['profitprice']) ? 'tplimit' : 'tpmarket';
             $params['side'] = $trigger  > $market->ask ? 'sell' : ($trigger < $market->bid ? 'buy' : null);
             if (isset($params['size'])) {

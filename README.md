@@ -2,7 +2,7 @@
 
 ## Summary
 
-FrostyBot is a minimal endpoint that is designed to be used with webhooks in Tradingview alerts. It receives simple commands and translates them to specific exchange orders and sends them to the exchange. This allows you to write your strategies and do your backtesting on Tradingview, and then easily integrate your strategies with your exchange once you are happy with the backtest. This then allows you to use Tradingview as your trading engine, with Frostybot merely facilitating the integration to your exchange.
+FrostyBot is a minimal endpoint that is designed to be used with webhooks in Tradingview alerts. It is designed to work cryptocurrency exchanges, specifically Bitmex, Deribit or FTX (more will be added in future). It receives simple commands and translates them to specific exchange orders and sends them to the exchange. This allows you to write your strategies and do your backtesting on Tradingview (or python, or whatever you like), and then easily integrate your strategies with your exchange once you are happy with the backtest. This then allows you to use a Tradingview strategy or study as your trading engine, with Frostybot merely facilitating the integration to your exchange. It also allows you to integrate your exchange with any other product that can send webhooks, such as Telegram or Discord.
 
 The way it works is simple:
 
@@ -15,7 +15,7 @@ The way it works is simple:
 
 ## Authors
 
-Developers listed below can normally be found on the [FrostyBot Discord Server](https://discord.gg/5WGepv). They are also known to frequent #the-lab channel on [Krown's Crypto Cave Discord Server](https://discordapp.com/invite/hzKU7qe):
+Developers listed below can normally be found on the [FrostyBot Discord Server](https://discord.gg/yK4U93s). They are also known to frequent #the-lab channel on [Krown's Crypto Cave Discord Server](https://discordapp.com/invite/hzKU7qe):
 
 * FrostyAF
 * Barnz
@@ -25,10 +25,10 @@ We kindly ask that you fully read the documentation before requesting any suppor
 
 ## Dedication
 
-Dedicated to @christiaan's mom, not only is she hot, but she's a classy lady too.
+Dedicated to @christiaan's mom, an all-round classy lady.
 
 ## Disclaimer
-Use this bot at your own risk. The authors accept no responsibility for losses incurred through using this software. This is a 0.x release which means it's beta software. So it may and probably will have some bugs. We strongly advise you to use a sub-account with a limited balance, or a testnet account to ensure that the bot is profitable before going live with any strategy. While we have gone to great lengths to test the software, if you do find any bugs, please report them to us and we will sort them out, but if you lose your account, that's on you.
+Use this bot at your own risk. The authors accept no responsibility for losses incurred through using this software. This is a 0.x release which means it's beta software. So it may and probably will have some bugs. We strongly advise you to use a sub-account with a limited balance, or a testnet account to ensure that the bot is profitable before going live with any strategy. While we have gone to great lengths to test the software, if you do find any bugs, please report them to us in the [FrostyBot Discord Server](https://discord.gg/yK4U93s) or on Github, and we will sort them out. Remember that risk management is your responsibility. If you lose your account, that's entirely on you.
 
 ## Supported Exchanges
 Currently Bitmex, Deribit and FTX exchanges are supported for perpetual and futures markets. For a list of markets supported on your exchange, use the \<exchange\>:markets command. The bot has been extensively tested on these markets, but should work on others as well:
@@ -37,15 +37,17 @@ Currently Bitmex, Deribit and FTX exchanges are supported for perpetual and futu
 * **Deribit:** BTC-PERPETUAL and ETH-PERPETUAL
 * **FTX:** BTC-PERP and ETH-PERP
 
-We will add more exchanges based on user demand. Keeping the code cross-compatible over all the exchanges is quite complex so we will only consider adding additional exchanges if a significant number of users request it. Bear in mind that this software is free, so we are under no obgligation to add features or provide support, but we will endevour to help out when and where we can. Support can also be found in #the-lab channel on Krown's Crypto Cave Discord community. There are a lot of very knowlegeable guys willing to help out if you need assistance.
+We will add more exchanges based on user demand. Keeping the code cross-compatible over all the exchanges is quite complex so we will only consider adding additional exchanges if a significant number of users request it. Bear in mind that this software is free, so we are under no obligation to add features or provide support, but we will endevour to help out when and where we can. Support can also be found in the [FrostyBot Discord Server](https://discord.gg/yK4U93s). There are a lot of very knowlegeable guys willing to help out if you need assistance.
 
 ## Scope      
-This bot is specifically designed to execute orders based on webhook alerts received from Tradingview. If you have used Autoview in the past you will understand the concept of converting Tradingview strategies and scripts into executable orders on your exchange. However, unlike Autoview, Frostybot makes use of an external web server (VPS, AWS etc), so does not require your PC to be powered on or your browser to be open for it to work.
+This bot is specifically designed to execute orders based on webhook alerts received from Tradingview (or from any other system that can send webhooks, such as Discord, Telegram etc). If you have used Autoview in the past you will understand the concept of converting Tradingview strategies and scripts into executable orders on your exchange. However, unlike Autoview, Frostybot makes use of an external web server (VPS, AWS etc), so does not require your PC to be powered on or your browser to be open for it to work.
+
+While is may seem a little complicated to setup and configure for novices, the point of Frostybot is that it's entirely free. You retain total control over your API keys and trading engine. It is perfect for integration projects where you have a trading engine (like a Tradingview strategy or some custom Python script) that you want to integrate with your exchange.
 
 ## Requirements
 In order to use Frostybot, you will need the following:
 * A Linux server which is publicly accessible over the Internet (either by public IP address, DDNS or DNAT). You must be able to access the web server publicly for Frostybot to work. We recommend using the free Ubuntu server available on [Amazon Lightsail](https://lightsail.aws.amazon.com). They also offer a free public IP address. There is also [a handy guide here](https://github.com/CryptoMF/frostybot/blob/master/LIGHTSAIL.md) which will show you how to set up your Lightsail VPS and Frostybot.
-* Apache2/Nginx (whichever you prefer). It is **your** responsibility to secure your web server. We accept no responsibility if your server is hacked. We have provided the necessary *.htaccess* file, and it is up to you to ensure that Apache uses it (AllowOveride All setting). We also highly recommend that you secure it with HTTPS (using [LetsEncrypt](https://www.digitalocean.com/community/tutorials/how-to-secure-apache-with-let-s-encrypt-on-ubuntu-18-04) or something similar). It's free, so there's really no excuse for having an insecure web server.
+* Apache2/Nginx (whichever you prefer). It is **your** responsibility to secure your web server. We accept no responsibility if your server is hacked. We have provided the necessary *.htaccess* file, and it is up to you to ensure that Apache uses it (AllowOveride All setting). We also highly recommend that you secure it with HTTPS (using [LetsEncrypt](https://www.digitalocean.com/community/tutorials/how-to-secure-apache-with-let-s-encrypt-on-ubuntu-18-04) or something similar). It's free, so there's really no excuse for having an insecure web server. If you're using Amazon Lightsail, [here is a guide](https://github.com/CryptoMF/frostybot/blob/master/LIGHTSAILSSL.md) on how to set up a domain name and SSL certificate for your bot.
 * PHP 7.2 or higher. You will need the following PHP modules installed (php-curl, php-mbstring, php-json, php-sqlite3, php-cli), and you will need to ensure that PHP is configured on your web server.
 * If you want to clone Frostybot from Github, you will need to have git installed.
 
@@ -54,12 +56,8 @@ In order to use Frostybot, you will need the following:
 ## Installation
 
 * We have a quick and dirty walkthrough on how to [setup Frostybot on Amazon Lightsail](https://github.com/CryptoMF/frostybot/blob/master/LIGHTSAIL.md)
+* There is also a tutorial on how to [configure a domain name and SSL for your Lightsail instance]((https://github.com/CryptoMF/frostybot/blob/master/LIGHTSAILSSL.md)
 * If you don't want to use Amazon Lightsail, check out our [Installation and Configuration Guide](https://github.com/CryptoMF/frostybot/blob/master/INSTALLATION.md).
-
-## Upgrading from a Previous Version of Frostybot
-Version 0.9 has been completely redeveloped from the ground up. The command syntax is different and there is no way to import your old configuration into the new version. We recommend that you install this new version from scratch and remove any prior versions of Frostybot that you have installed.
-
-We will pay more attention to backwards compatibility once we are out of beta, but until then this is the wild west and changes will happen while we find the best way to get certain things done.
 
 ## Changelog
 
@@ -174,7 +172,7 @@ Other than Tradingview firing off webhooks, you can also communicate manually wi
     ./frostybot ftx:cancel id=<orderid>                         (Cancel a specific order on FTX)
     ./frostybot deribit:cancel id=all                           (Cancel all open orders on Deribit)
     ./frostybot bitmex:cancelall                                (Cancel all open orders on Bitmex)
-    ./frostybot ftx:cancel symbol=ADA-PERP                      (Cancel all ADA-PERP orders on FTX)
+    ./frostybot ftx:cancelall symbol=ADA-PERP                   (Cancel all ADA-PERP orders on FTX)
     ./frostybot bitmex:positions                                (Show current positions on Bitmex, if any)
     ./frostybot deribit:position symbol=BTC-PERPETUAL           (Show current BTC-PERPETUAL position on Deribit)
     ./frostybot ftx:ohlcv symbol=BTC-PERP timeframe=1h          (Show current hourly OHLCV data for FTX BTC-PERP)
