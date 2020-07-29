@@ -348,30 +348,35 @@
                 return null;
             }
             $market = $this->market(['symbol' => $symbol]);
-            if (strpos($price, ',') !== false) {                               // Layered order
-                $price = $price.(substr_count($price, ',') < 2 ? ',5' : '');   // Add default qty
+            if (strpos($price, ',') !== false) {                                // Layered order
+                $price = $price.(substr_count($price, ',') < 2 ? ',5' : '');    // Add default qty
                 list($range1, $range2, $qty) = explode(',', $price);
-                if ((string) $price[0] == "+") {                                // Price expressed in relation to market price (above price)
+                if (((string) $price)[0] == "+") {                              // Price expressed in relation to market price (above price)
                     $range1 = $market->bid + abs($range1);
                     $range2 = $market->bid + abs($range2);
                 }
-                if ((string) $price[0] == "-") {                                // Price expressed in relation to market price (above price)
+                if (((string) $price)[0] == "-") {                              // Price expressed in relation to market price (above price)
                     $range1 = $market->ask - abs($range1);
                     $range2 = $market->ask - abs($range2);
                 }
                 $rangebottom = min($range1, $range2);
                 $rangetop = max($range1, $range2);
-                $inc = ($rangetop - $rangebottom) / $qty;
+
                 $ret = [];
-                for ($i = $rangebottom; $i < $rangetop; $i += $inc) {
-                    $ret[] = $i;
+                if ($qty > 1) {
+                    $inc = ($rangetop - $rangebottom) / ($qty - 1);
+                    for ($i = 0; $i < $qty; $i++) {
+                        $ret[] = $rangebottom + ($i * $inc);
+                    }
+                } else {
+                    $ret[] = $rangebottom + ($rangetop - $rangebottom) / 2;
                 }
                 return $ret;
             } else {                                                            // Non-layered order
-                if ((string) $price[0] == "+") {                                // Price expressed in relation to market price (above price)
+                if (((string) $price)[0] == "+") {                              // Price expressed in relation to market price (above price)
                     $price = $market->bid + abs($price);
                 }
-                if ((string) $price[0] == "-") {                                // Price expressed in relation to market price (below price)
+                if (((string) $price)[0] == "-") {                              // Price expressed in relation to market price (below price)
                     $price = $market->ask - abs($price);
                 }
                 return $price;
@@ -445,10 +450,10 @@
             $currentDir = $this->position_direction($symbol);                       // Current position direction (long or short)
 
             $size = $params['size'];                                                // The size should be an absolute or relative value
-            $sizeType = in_array($size[0], ['-','+']) ? 'relative' : 'absolute';    // Check if size is relative or absolute            
+            $sizeType = in_array($size[0], ['-','+']) ? 'relative' : 'absolute';    // Check if size is relative or absolute
             if (($direction != $currentDir) && ($sizeType == 'relative')) {         // If the size type is relative, but switching direction, make the size type absolute
                 if ($currentDir !== false) {
-                    $size = $this->get_absolute_size(substr($size,1));                 
+                    $size = $this->get_absolute_size(substr($size,1));
                     $sizeType = 'absolute';
                 }
             }
@@ -456,7 +461,7 @@
             // ----------------------------------------------------------
             // Size relative to current position provided (size=+xxx or size=-xxx)
             // ----------------------------------------------------------
-            if ($sizeType == "relative") {               
+            if ($sizeType == "relative") {
                 $operator = $size[0];
                 $size = $this->get_absolute_size(substr($size,1));                  // Make trade size absolute
                 // Increase position
@@ -469,10 +474,10 @@
                     if ($positionSizeUsd - $size < 0) {
                         if ($positionSizeUsd > 0) {
                             $size = $positionSizeUsd;                               // Close position if size is negative
-                            logger::warning('Size greater than current position, closing position'); 
+                            logger::warning('Size greater than current position, closing position');
                         } else {
                             $size = 0;                                              // Don't execute negative order if not in a position
-                            logger::error('Cannot reduce position when not in a position'); 
+                            logger::error('Cannot reduce position when not in a position');
                         }
                     }
                 }
@@ -480,26 +485,26 @@
                     $resultSize = $positionSizeUsd + ($operator == '-' ? 0 - $size : $size);
                     if ($resultSize > $maxSize) {
                         $size = ($operator == '-' ? $size + ($resultSize  - $maxSize) : $maxSize - $positionSizeUsd);
-                        logger::debug('Position size limit: '.$maxSize.", Resultant position size: ".$resultSize.", Adjusted size: ".$size); 
+                        logger::debug('Position size limit: '.$maxSize.", Resultant position size: ".$resultSize.", Adjusted size: ".$size);
                         if ($size < 0) {
                             $size = abs($size);
                             $operator = '-';
                             //$size = 0;
                         }
                         if ($size > 0) {
-                            logger::warning('Order size would exceed maximum position size, adjusting order size to '.$size.'.'); 
+                            logger::warning('Order size would exceed maximum position size, adjusting order size to '.$size.'.');
                         }
                         if (round($size) == 0) {
-                            logger::error('Maximum position size reached, order not permitted.'); 
+                            logger::error('Maximum position size reached, order not permitted.');
                         }
                     }
                 }
                 if (isset($params['stoptrigger'])) {
-                    logger::warning('Stoptrigger not supported when using relative size orders, ignoring...');  
+                    logger::warning('Stoptrigger not supported when using relative size orders, ignoring...');
                     unset($params['stoptrigger']);
                 }
                 if (isset($params['profittrigger'])) {
-                    logger::warning('Profittrigger not supported when using relative size orders, ignoring...');  
+                    logger::warning('Profittrigger not supported when using relative size orders, ignoring...');
                     unset($params['profittrigger']);
                 }
                 logger::debug('Relative size parameter calculated as '.$size);
@@ -646,23 +651,23 @@
             $market = $this->market(['symbol' => $symbol]);
             $price = isset($params['price']) ? $this->average_price($symbol, $params['price']) : null;
             if ((!is_numeric($size)) || ($size < 0)) {
-                logger::error('Size parameter must be a positive value in USD.'); 
+                logger::error('Size parameter must be a positive value in USD.');
                 return false;
             }
             if ((!is_numeric($maxSize)) || ($maxSize < 0)) {
-                logger::error('Maxsize parameter must be a positive value in USD.'); 
+                logger::error('Maxsize parameter must be a positive value in USD.');
                 return false;
             }
             if ((!is_null($price)) && ($params['price'] < 0)) {
-                logger::error('Price parameter must be a positive value in USD.'); 
+                logger::error('Price parameter must be a positive value in USD.');
                 return false;
             }
             if (isset($params['stoptrigger'])) {
-                logger::warning('Stoptrigger not supported when using simple buy/sell orders, ignoring...');  
+                logger::warning('Stoptrigger not supported when using simple buy/sell orders, ignoring...');
                 unset($params['stoptrigger']);
             }
             if (isset($params['profittrigger'])) {
-                logger::warning('Profittrigger not supported when using simple buy/sell orders, ignoring...');  
+                logger::warning('Profittrigger not supported when using simple buy/sell orders, ignoring...');
                 unset($params['profittrigger']);
             }
             $type = is_null($price) ? 'market' : 'limit';
@@ -674,12 +679,12 @@
                 if ($size < 0) {
                     $size = 0;
                 }
-                logger::debug('Position size limit: '.$directionMaxSize.", Resultant position size: ".$resultSize.", Adjusted size: ".$size); 
+                logger::debug('Position size limit: '.$directionMaxSize.", Resultant position size: ".$resultSize.", Adjusted size: ".$size);
                 if ($size == 0) {
-                    logger::error('Maximum position size reached, order not permitted.'); 
+                    logger::error('Maximum position size reached, order not permitted.');
                 }
                 if ($size > 0) {
-                    logger::warning('Order size would exceed maximum position size, adjusting order size to '.$size.'.'); 
+                    logger::warning('Order size would exceed maximum position size, adjusting order size to '.$size.'.');
                 }
             }
             $orderParams = [
@@ -694,7 +699,7 @@
             $balance = $this->total_balance_usd();
             $comment = isset($params['comment']) ? $params['comment'] : 'None';
             logger::info('TRADE | Direction: '.strtoupper($side).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
-            
+
         }
 
         // Simple Buy Order  (Only size, price and maxsize parameters allowed. Limit or Market, depending on if you supply the price parameter)
@@ -704,7 +709,7 @@
 
         // Simple Sell Order  (Only size, price and maxsize parameters allowed. Limit or Market, depending on if you supply the price parameter)
         public function sell($params) {
-            return $this->simple_trade('sell', $params);            
+            return $this->simple_trade('sell', $params);
         }
 
         // Submit an order the exchange
@@ -743,10 +748,10 @@
         // Calculate the absolute price in case the input contains +/- relative price
         private function get_absolute_price($symbol, $price_input) {
           $market = $this->market(['symbol' => $symbol]);
-          if ((string) $price_input[0] == "+") {                                // Trigger expressed in relation to market price (above price)
+          if (((string) $price_input)[0] == "+") {                                // Trigger expressed in relation to market price (above price)
               return $market->bid + abs($price_input);
           }
-          if ((string) $price_input[0] == "-") {                                // Trigger expressed in relation to market price (below price)
+          if (((string) $price_input)[0] == "-") {                                // Trigger expressed in relation to market price (below price)
               return $market->ask - abs($price_input);
           }
           return $price_input;
