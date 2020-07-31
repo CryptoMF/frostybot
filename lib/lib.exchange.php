@@ -245,16 +245,9 @@
                     $orders = $this->ccxt->cancel_all_orders($symbol);
                     if (is_array($orders)) {
                         foreach ($orders as $order) {
-                            $results[] = $this->normalizer->parse_order($this->ccxt->cancel_order($order->id, $order->symbol));
+                            $results[] = $this->normalizer->parse_order($order);
                         }
-                    } else {
-                        if (is_array($orders)) {
-                            foreach ($orders as $key => $order) {
-                                $orders[$key]->status = 'cancelled';
-                            }
-                            $results = $orders;
-                        }
-                    }
+                    } 
                 } else {
                     $orders = $this->orders(array_merge($params,['status'=>'open']));
                     foreach ($orders as $order) {

@@ -60,25 +60,25 @@ class ftx_frostybot extends ftx {
     public function cancel_all_orders ($symbol = null, $params = array ()) {
         $this->load_markets();
         $market = $this->market ($symbol);
-
-        $request = array (
-            'market' => $market['id'], // optional
-            'conditionalOrdersOnly' => false, // cancel conditional orders only
-            'limitOrdersOnly' => false, // cancel existing limit orders (non-conditional orders) only
-        );
-                
-        $response = @$this->privateDeleteOrders (array_merge ($request, $params));
-
-        /*
-        if ($response['success'] == true) {
-            return $this->update_order_status($orders, "cancelled");
+        $orders = $this->fetch_open_orders($symbol);
+        if (is_array($orders)) {
+            $results = [];
+            foreach($orders as $order) {
+                $id = $order['id'];
+                if (in_array($order['type'],['limit','market'])) {  // If it's not a standard order, then it must be a conditional order
+                    $response = $this->privateDeleteOrdersOrderId (['order_id'=>$id]);
+                } else {
+                    $response = $this->privateDeleteConditionalOrdersOrderId (['order_id'=>$id]);
+                }
+                if ($response['success'] == true) {
+                    $result = $this->update_order_status($order, "cancelled");
+                    $results = $this->merge_order_result($results, $result);
+                }
+            }
         }
-        */
-
-        $result = $this->safe_value($response, 'result', array());
-        return $result;
+        return $results;
     }
-
+    
 
     private function fetch_conditional_orders($symbol, $historical = true) {
         $response = $this->privateGetConditionalOrders (['market'=>$symbol]);
