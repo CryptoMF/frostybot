@@ -70,10 +70,7 @@ class ftx_frostybot extends ftx {
                 } else {
                     $response = $this->privateDeleteConditionalOrdersOrderId (['order_id'=>$id]);
                 }
-                if ($response['success'] == true) {
-                    $result = $this->update_order_status($order, "cancelled");
-                    $results = $this->merge_order_result($results, $result);
-                }
+                $results[] = ($response['success'] == true ? $this->update_order_status($order, "cancelled") : $order);
             }
         }
         return $results;
