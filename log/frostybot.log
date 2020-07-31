@@ -1,1 +1,3 @@
 
+2020-07-31 09:42:32 | NOTICE  | Undefined property: ccxt\ftx_frostybot::$normalizer (lib.ccxt.ftx.php:74)
+2020-07-31 09:42:32 | ERROR   | Call to a member function parse_order() on null (/mnt/d/NextCloud/Personal/Development/frostybot/lib/lib.ccxt.ftx.php:74)
