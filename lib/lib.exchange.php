@@ -254,9 +254,12 @@
                         $results[] = $this->normalizer->parse_order($this->ccxt->cancel_order($order->id, $order->market->symbol));
                     }
                 }
+                notifications::send('cancel', ['orders' => $results]);
                 return $results;
             } else {
-                return $this->normalizer->parse_order($this->ccxt->cancel_order($id, $symbol));
+                $result = $this->normalizer->parse_order($this->ccxt->cancel_order($id, $symbol));
+                notifications::send('cancel', ['orders' => $result]);
+                return $result;
             }
             logger::error('Failed to cancel order: '.$id);
             return false;
@@ -578,8 +581,10 @@
                         $tpResult = $this->takeprofit($tpParams);
                         $linkedOrder->add($tpResult);
                     }
+                    notifications::send('order', ['orders' => $linkedOrder]);
                     return $linkedOrder;
                 } else {
+                    notifications::send('order', ['orders' => $orderResult]);
                     return $orderResult;
                 }
             }
@@ -708,10 +713,12 @@
         // Submit an order the exchange
         private function submit_order($params) {
             if ((isset($params['price'])) && (!is_null($params['price'])) && (strpos($params['price'], ',') !== false)) {     // This is a layered order
-                return $this->layered_order($params);
+                $result = $this->layered_order($params);
             } else {                                                                             // This is a non-layered order
-                return $this->regular_order($params);
+                $result = $this->regular_order($params);
             }
+            //notifications::send('order', ['orders' => $result]);
+            return $result;
         }
 
         // Layered order
@@ -778,7 +785,9 @@
             if (!($params['amount'] > 0)) {
                 logger::error("Could not automatically determine the size of the stop loss order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
-            return $this->submit_order($params);
+            $result = $this->submit_order($params);
+            notifications::send('order', ['orders' => $result]);
+            return $result;
         }
 
         // Take Profit Orders
@@ -809,7 +818,9 @@
             if (!($params['amount'] > 0)) {
                 logger::error("Could not automatically determine the size of the take profit order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
-            return $this->submit_order($params);
+            $result = $this->submit_order($params);
+            notifications::send('order', ['orders' => $result]);
+            return $result;
         }
 
         // Close Position

@@ -23,6 +23,7 @@
     }
     include('lib/lib.exchange.php');        // Main exchange wrapper
     include('lib/lib.symbolmap.php');       // Symbol mapping manager
+    include('lib/lib.notifications.php');   // Notifications manager
     include('lib/lib.unittests.php');       // Development test units
     include('lib/lib.command.php');         // Command interpreter
 

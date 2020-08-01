@@ -59,7 +59,6 @@
                 }
             }
             if ((isset($params['testnet'])) && (isset($params['exchange']))) {
-                //print_r($params);
                 $url = self::geturl($params['exchange'], $params['testnet']);
                 if (!empty($url)) {
                     $data['parameters']['urls'] = ['api' => $url];

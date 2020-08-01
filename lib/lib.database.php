@@ -10,6 +10,7 @@
             $this->conn = new SQLite3($this->database);
             $this->conn->busyTimeout(5000);
             $this->conn->exec('PRAGMA journal_mode = wal;');
+            $this->inittables();
         }
 
         public function initialize() {
@@ -22,6 +23,23 @@
                 $this->exec($sql);
             }     
             //config::import(accounts);
+            return true;   
+        }
+
+        // Initialize missing tables
+        private function inittables() {
+            foreach(glob('db/sql/*.sql') as $sqlFile) {
+                $table = str_replace(['db/sql/','.sql'], '', $sqlFile);
+                $checktable = $this->select('sqlite_master', ['type' => 'table', 'name' => $table]);
+                if (count($checktable) == 0) {
+                    $sql = file_get_contents($sqlFile);
+                    logger::debug('Initializing missing table: '.$table);
+                    $this->exec($sql);
+                //} else {
+                    //logger::debug('Table '.$table.' exists. Removing initializing file.');
+                    //kill($sqlFile);
+                }               
+            }     
             return true;   
         }
 

@@ -169,7 +169,6 @@
                 break;
         }
         $logtype = strtolower($type);
-        //print_r(['no' => $errno,'msg'=>$errstr,'file'=>$errfile,'line'=>$errline]);
         logger::$logtype($errstr.' ('.basename($errfile).':'.$errline.')');
         return true;        
     }

@@ -159,7 +159,15 @@
         // Execute the command, and ensure that the necessary parameters have been given
         public function execute($output = false) {
             $this->_parseParams();
-            logger::debug($this->type." command issued: ".str_replace('__frostybot__:','',$this->params['stub'].':'.$this->params['command']).(isset($this->params['comment']) ? ' ('.$this->params['comment'].')' : ''));
+            //logger::debug($this->type." command issued: ".str_replace('__frostybot__:','',$this->params['stub'].':'.$this->params['command']).(isset($this->params['comment']) ? ' ('.$this->params['comment'].')' : ''));
+            $paramarr = [];
+            foreach ($this->params as $key => $value) {
+                if (!in_array($key, ['stub', 'command'])) {
+                    $paramarr[] = $key.'='.$value;
+                }
+            }
+            $GLOBALS['cmd'] = str_replace('__frostybot__:','',$this->params['stub'].':'.$this->params['command']).' '.implode(' ', $paramarr);
+            logger::debug($this->type." command issued: ".$GLOBALS['cmd']);
             if (requiredParams($this->params,['stub','command']) !== false) {
                 $stub = strtolower($this->params['stub']);
                 $command = strtolower($this->params['command']);
@@ -198,6 +206,8 @@
                         case 'WHITELIST'    :   $result = whitelist::manage($this->params);
                                                 break;
                         case 'SYMBOLMAP'    :   $result = symbolmap::manage(requiredParams($this->params,['exchange']));
+                                                break;
+                        case 'NOTIFICATIONS':   $result = notifications::manage($this->params);
                                                 break;
                         case 'UNITTESTS'    :   $result = unitTests::runTests(requiredParams($this->params,['group']));
                                                 break;
@@ -243,8 +253,6 @@
                                                 $result = false;
                                                 break;
                     }
-                    //print_r($result);
-                    //die;
 
                 } else {
                     $result = false;
