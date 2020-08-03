@@ -254,7 +254,9 @@
                         $results[] = $this->normalizer->parse_order($this->ccxt->cancel_order($order->id, $order->market->symbol));
                     }
                 }
-                notifications::send('cancel', ['orders' => $results]);
+                if (count($results) > 0) {
+                    notifications::send('cancel', ['orders' => $results]);
+                }
                 return $results;
             } else {
                 $result = $this->normalizer->parse_order($this->ccxt->cancel_order($id, $symbol));

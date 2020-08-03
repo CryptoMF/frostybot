@@ -20,9 +20,9 @@
                 'method' => 'POST',
                 'textfield' => 'text',
                 'templates' => [
-                    'order' => '<title><b>{{symbol}} Order{{plural}} Created</b></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
-                    'cancel' => '<title><b>{{symbol}} Order{{plural}} Cancelled</b></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
-                    'test' => '<title><b>Test Message</b></title><message>'.PHP_EOL.'This is a test message sent from Frostybot</message><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
+                    'order' => '<title><b>{{symbol}} Order{{plural}} Created</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
+                    'cancel' => '<title><b>{{symbol}} Order{{plural}} Cancelled</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
+                    'custom' => '<title><b>{{type}} Message</b> <i>{{stub}}</i></title><message>'.PHP_EOL.'{{message}}</message><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
                 ],
                 'result' => [
                     'field' => 'ok',
@@ -44,9 +44,9 @@
                 'method' => 'POST',
                 'textfield' => 'content',
                 'templates' => [
-                    'order' => '<title>**{{symbol}} Order{{plural}} Created**</title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'*{{debug}}*</debug>',
-                    'cancel' => '<title>**{{symbol}} Order{{plural}} Cancelled**</title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'*{{debug}}*</debug>',
-                    'test' => '<title>**Test Message**</title><message>'.PHP_EOL.'This is a test message sent from Frostybot</message><debug>'.PHP_EOL.'*{{debug}}*</debug>',
+                    'order' => '<title>**{{symbol}} Order{{plural}} Created** *{{stub}}*</title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'*{{debug}}*</debug>',
+                    'cancel' => '<title>**{{symbol}} Order{{plural}} Cancelled** *{{stub}}*</title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'*{{debug}}*</debug>',
+                    'custom' => '<title>**{{type}} Message** *{{stub}}*</title><message>'.PHP_EOL.'{{message}}</message><debug>'.PHP_EOL.'*{{debug}}*</debug>',
                 ],
                 'result' => [
                     'field' => 'type',
@@ -69,9 +69,9 @@
                 'method' => 'POST',
                 'textfield' => 'message',
                 'templates' => [
-                    'order' => '<title><b>{{symbol}} Order{{plural}} Created</b></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
-                    'cancel' => '<title><b>{{symbol}} Order{{plural}} Cancelled</b></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
-                    'test' => '<title><b>Test Message</b></title><message>'.PHP_EOL.'This is a test message sent from Frostybot</message><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
+                    'order' => '<title><b>{{symbol}} Order{{plural}} Created</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
+                    'cancel' => '<title><b>{{symbol}} Order{{plural}} Cancelled</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
+                    'custom' => '<title><b>{{type}} Message</b> <i>{{stub}}</i></title><message>'.PHP_EOL.'{{message}}</message><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
                 ],
                 'result' => [
                     'field' => 'status',
@@ -85,7 +85,7 @@
         // Add, update or delete notifications
         public static function manage($params) {
             if ((isset($params['test'])) && ($params['test'] == "true")) {
-                return self::send('test', [], (isset($params['platform']) ? $params['platform'] : null));
+                return self::send('custom', ['type'=>'Test', 'message'=>'This is a test message'], (isset($params['platform']) ? $params['platform'] : null));
             }
             if (isset($params['platform'])) {
                 $platform = strtolower($params['platform']);
@@ -135,7 +135,7 @@
 
         // Get section templates
         private static function getsections($text) {
-            $allowedTags = ['title','orders','message','debug'];
+            $allowedTags = ['title','orders','type','message','debug'];
             $sections = [];
             foreach ($allowedTags as $tag) {
                 preg_match("'<".$tag.">(.*?)</".$tag.">'si", $text, $match);
@@ -149,13 +149,22 @@
             return $sections;
         }
 
+        // Check if no orders provided
+        private static function noorders($params = null) {
+            if (is_null($params)) { return true; }
+            if ((is_array($params)) && (count($params) == 0)) { return true; }
+            return false;
+        }
+
         // Check if orders passed are complex (linked order, layed order, array of orders)
-        private static function orderplural($params) {
+        private static function orderplural($params = null) {
+            if (self::noorders($params)) { return 's'; }
             return (((is_object($params)) && (get_class($params) == 'linkedOrderObject')) || ((is_array($params)) && (get_class($params[0]) == 'orderObject'))) ? 's' : '';
         }    
         
         // Get order symbol
-        private static function ordersymbol($params) {
+        private static function ordersymbol($params = null) {
+            if (self::noorders($params)) { return $GLOBALS['symbol']; }
             if ((is_object($params)) && (get_class($params) == 'orderObject')) {
                 $symbol = $params->market->symbol;
             }
@@ -169,7 +178,8 @@
         }
 
         // Parse order
-        private static function parseorders($text, $params) {
+        private static function parseorders($text, $params = null) {
+            if (self::noorders($params)) { return ''; }
             $content = '';
             if ((is_object($params)) && (get_class($params) == 'orderObject')) {        // Single order
                 $data = [];
@@ -233,6 +243,7 @@
                         $data[$field] = $value;
                     }
                     $params['debug'] = ((isset($settings->params->debug)) && ($settings->params->debug == true) ? '(Command: '.$GLOBALS['cmd'].')' : '');
+                    $params['stub'] = (trim($GLOBALS['stub']) != "" ? '('.$GLOBALS['stub'].')' : '');
                     if (isset($params['orders'])) {
                         $params['plural'] = self::orderplural($params['orders']);
                         $params['symbol'] = self::ordersymbol($params['orders']);

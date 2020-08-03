@@ -169,7 +169,7 @@
                 break;
         }
         $logtype = strtolower($type);
-        logger::$logtype($errstr.' ('.basename($errfile).':'.$errline.')');
+        logger::$logtype($errstr.' ('.basename($errfile).':'.$errline.')', $errstr);
         return true;        
     }
 
@@ -177,11 +177,11 @@
         $type = strtolower(get_class($e));
         if (!in_array($type,['error','warning','notice','info','debug'])) {
             $message = strtoupper($type).': '.$e->getMessage().' ('.$e->getFile().':'.$e->getLine().')';
-            $type='error';
+            $type='error';    
         } else {
             $message = $e->getMessage().' ('.$e->getFile().':'.$e->getLine().')';
         }
-        logger::$type($message);
+        logger::$type($message, $e->getMessage());
         return true;
     }
 
@@ -214,14 +214,16 @@
             }
         }
 
-        static public function warning($message) {
+        static public function warning($message, $notifymsg = null) {
             message(800,'WARNING',$message);
-            self::message('warning', $message);
+            notifications::send('custom', ['type'=>'Warning', 'message'=>(is_null($notifymsg) ? $message : $notifymsg)]);
+            self::message('warning', $message, $notifymsg);
         }
 
-        static public function error($message) {
+        static public function error($message, $notifymsg = null) {
             //message(900,'ERROR',$message);
-            self::message('error', $message);
+            notifications::send('custom', ['type'=>'Error', 'message'=>(is_null($notifymsg) ? $message : $notifymsg)]);
+            self::message('error', $message, $notifymsg);
             outputResult(900,$message,'error');
         }
 

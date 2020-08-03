@@ -167,6 +167,7 @@
                 }
             }
             $GLOBALS['cmd'] = str_replace('__frostybot__:','',$this->params['stub'].':'.$this->params['command']).' '.implode(' ', $paramarr);
+            $GLOBALS['stub'] = str_replace('__frostybot__:','',$this->params['stub']);
             logger::debug($this->type." command issued: ".$GLOBALS['cmd']);
             if (requiredParams($this->params,['stub','command']) !== false) {
                 $stub = strtolower($this->params['stub']);
@@ -189,6 +190,7 @@
                         } else {
                             $this->params['symbol'] = $defaultsymbol;
                         }
+                        $GLOBALS['symbol'] = $this->params['symbol'];
                         $this->exchange = new exchange($config['exchange'],$config['parameters']);
                     }
                     switch (strtoupper($command)) {
