@@ -699,7 +699,7 @@
             $balance = $this->total_balance_usd();
             $comment = isset($params['comment']) ? $params['comment'] : 'None';
             logger::info('TRADE | Direction: '.strtoupper($side).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
-
+            notifications::send('order', ['orders' => $orderResult]);
         }
 
         // Simple Buy Order  (Only size, price and maxsize parameters allowed. Limit or Market, depending on if you supply the price parameter)
@@ -850,6 +850,7 @@
                     $balance = $this->total_balance_usd();
                     $comment = isset($params['comment']) ? $params['comment'] : 'None';
                     logger::info('TRADE:CLOSE | Symbol: '.$symbol.' | Direction: '.$side.' | Type: '.$type.' | Size: '.($requestedSize * $market->contract_size).' | Price: '.(is_null($price) ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
+                    notifications::send('order', ['orders' => $orderResult]);
                     return $orderResult;
                 }
             } else {
