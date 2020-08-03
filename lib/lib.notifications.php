@@ -242,8 +242,9 @@
                     foreach((array) $settings->params as $field => $value) {                       // Load user-defined settings
                         $data[$field] = $value;
                     }
-                    $params['debug'] = ((isset($settings->params->debug)) && ($settings->params->debug == true) ? '(Command: '.$GLOBALS['cmd'].')' : '');
-                    $params['stub'] = (trim($GLOBALS['stub']) != "" ? '('.$GLOBALS['stub'].')' : '');
+                    $debug = ((isset($settings->params->debug)) && ($settings->params->debug == true) ? true : false);
+                    $params['debug'] = ($debug ? '(Command: '.$GLOBALS['cmd'].')' : '');
+                    $params['stub'] = str_replace('_','',(trim($GLOBALS['stub']) != "" ? '('.$GLOBALS['stub'].')' : ''));
                     if (isset($params['orders'])) {
                         $params['plural'] = self::orderplural($params['orders']);
                         $params['symbol'] = self::ordersymbol($params['orders']);
@@ -253,10 +254,12 @@
                     foreach ($sections as $tag => $section) {                                      // Parse content inside sections
                         $text = $section['text'];
                         $original = $section['original'];
-                        if ($tag == 'orders') {
-                            $content = str_replace($original, self::parseorders($text, $params['orders']), $content);
-                        } else {
-                            $content = str_replace($original, self::parsetext($text, $params), $content);
+                        switch (strtolower($tag)) {
+                            case 'orders'   :   $content = str_replace($original, self::parseorders($text, $params['orders']), $content);
+                                                break;
+                            case 'debug'    :   $content = str_replace($original, ($debug ? self::parsetext($text, $params) : ''), $content);
+                                                break;
+                            default         :   $content = str_replace($original, self::parsetext($text, $params), $content);
                         }
                     }
                     $content = str_replace($original, self::parsetext($content, $params), $content);  // Parse content not inside a section
