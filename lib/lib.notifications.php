@@ -87,6 +87,14 @@
             if ((isset($params['test'])) && ($params['test'] == "true")) {
                 return self::send('custom', ['type'=>'Test', 'message'=>'This is a test message'], (isset($params['platform']) ? $params['platform'] : null));
             }
+            if ((isset($params['debug'])) && (!isset($params['platform']))) {
+                $configs = self::get();
+                foreach ($configs as $config) {
+                    $config->params->debug = ($params['debug'] == "true" ? "true" : "false");
+                    self::insertOrUpdate($config->platform, (array) $config->params);
+                }
+                return self::get();
+            }
             if (isset($params['platform'])) {
                 $platform = strtolower($params['platform']);
                 if ((isset($params['delete'])) && ($params['delete'] == "true")) {

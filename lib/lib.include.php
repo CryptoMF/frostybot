@@ -4,6 +4,7 @@
     // Include config, CCXT, normalizer libraries, exchange wrapper and command interpreter
 
     include('cfg/cfg.config.php');          // Main application config
+    include('lib/lib.notifications.php');   // Notifications manager
     include('lib/lib.output.php');          // Output handler
     include('lib/lib.database.php');        // SQLite database backend
     include('lib/lib.config.php');          // Configuration tools
@@ -23,7 +24,6 @@
     }
     include('lib/lib.exchange.php');        // Main exchange wrapper
     include('lib/lib.symbolmap.php');       // Symbol mapping manager
-    include('lib/lib.notifications.php');   // Notifications manager
     include('lib/lib.unittests.php');       // Development test units
     include('lib/lib.command.php');         // Command interpreter
 
