@@ -278,12 +278,13 @@
         }
 
         // Get total balance in USD value using current market data
-        public function total_balance_usd() {
+        public function total_balance_usd($params) {
             $balances = $this->fetch_balance();
             $usd_total = 0;
             foreach ($balances as $balance) {
                 $usd_total += $balance->balance_usd_total;
             }
+            notifications::send('custom', ['type'=>'Balance', 'message'=>'Total Balance USD: '.$usd_total], (isset($params['platform']) ? $params['platform'] : null));
             return $usd_total;
         }
 

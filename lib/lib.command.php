@@ -217,7 +217,7 @@
                                                 break;
                         case 'BALANCE'      :   $result = $this->exchange->fetch_balance();
                                                 break;
-                        case 'BALANCEUSD'   :   $result = $this->exchange->total_balance_usd();
+                        case 'BALANCEUSD'   :   $result = $this->exchange->total_balance_usd($this->params);
                                                 break;
                         case 'MARKET'       :   $result = $this->exchange->market(requiredParams($this->params,['symbol']));
                                                 break;
