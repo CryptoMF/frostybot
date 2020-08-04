@@ -243,8 +243,9 @@
                         $data[$field] = $value;
                     }
                     $debug = ((isset($settings->params->debug)) && ($settings->params->debug == true) ? true : false);
-                    $params['debug'] = ($debug ? '(Command: '.$GLOBALS['cmd'].')' : '');
-                    $params['stub'] = str_replace('_','',(trim($GLOBALS['stub']) != "" ? '('.$GLOBALS['stub'].')' : ''));
+                    $cmd = isset($GLOBALS['cmd']) ? '(Command: '.$GLOBALS['cmd'].')' : '';
+                    $params['debug'] = ($debug ? '(Command: '.(isset($GLOBALS['cmd']) ? $GLOBALS['cmd'] : 'None').')' : '');
+                    $params['stub'] = (((isset($GLOBALS['stub'])) && (str_replace('_','',trim($GLOBALS['stub'])) != "")) ? '('.$GLOBALS['stub'].')' : '');
                     if (isset($params['orders'])) {
                         $params['plural'] = self::orderplural($params['orders']);
                         $params['symbol'] = self::ordersymbol($params['orders']);
