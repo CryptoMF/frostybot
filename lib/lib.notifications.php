@@ -243,14 +243,8 @@
                         $data[$field] = $value;
                     }
                     $debug = ((isset($settings->params->debug)) && ($settings->params->debug == true) ? true : false);
-<<<<<<< HEAD
-                    $cmd = isset($GLOBALS['cmd']) ? '(Command: '.$GLOBALS['cmd'].')' : '';
                     $params['debug'] = ($debug ? '(Command: '.(isset($GLOBALS['cmd']) ? $GLOBALS['cmd'] : 'None').')' : '');
                     $params['stub'] = (((isset($GLOBALS['stub'])) && (str_replace('_','',trim($GLOBALS['stub'])) != "")) ? '('.str_replace('_','',trim($GLOBALS['stub'])).')' : '');
-=======
-                    $params['debug'] = ($debug ? '(Command: '.$GLOBALS['cmd'].')' : '');
-                    $params['stub'] = str_replace('_','',(trim($GLOBALS['stub']) != "" ? '('.$GLOBALS['stub'].')' : ''));
->>>>>>> parent of c7a90a0... Notifications bugfix
                     if (isset($params['orders'])) {
                         $params['plural'] = self::orderplural($params['orders']);
                         $params['symbol'] = self::ordersymbol($params['orders']);
