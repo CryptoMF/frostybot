@@ -20,8 +20,8 @@
                 'method' => 'POST',
                 'textfield' => 'text',
                 'templates' => [
-                    'order' => '<title><b>{{symbol}} Order{{plural}} Created</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
-                    'cancel' => '<title><b>{{symbol}} Order{{plural}} Cancelled</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
+                    'order' => '<title><b>{{symbol}} Order{{plural}} Created</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders>'.PHP_EOL.'<message><b>Balance (USD):</b> {{balance}}</message><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
+                    'cancel' => '<title><b>{{symbol}} Order{{plural}} Cancelled</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders>'.PHP_EOL.'<message><b>Balance (USD):</b> {{balance}}</message><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
                     'custom' => '<title><b>{{type}} Message</b> <i>{{stub}}</i></title><message>'.PHP_EOL.'{{message}}</message><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
                 ],
                 'result' => [
@@ -44,8 +44,8 @@
                 'method' => 'POST',
                 'textfield' => 'content',
                 'templates' => [
-                    'order' => '<title>**{{symbol}} Order{{plural}} Created** *{{stub}}*</title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'*{{debug}}*</debug>',
-                    'cancel' => '<title>**{{symbol}} Order{{plural}} Cancelled** *{{stub}}*</title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'*{{debug}}*</debug>',
+                    'order' => '<title>**{{symbol}} Order{{plural}} Created** *{{stub}}*</title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders>'.PHP_EOL.'<message>**Balance (USD):** {{balance}}</message><debug>'.PHP_EOL.'*{{debug}}*</debug>',
+                    'cancel' => '<title>**{{symbol}} Order{{plural}} Cancelled** *{{stub}}*</title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders>'.PHP_EOL.'<message>**Balance (USD):** {{balance}}</message><debug>'.PHP_EOL.'*{{debug}}*</debug>',
                     'custom' => '<title>**{{type}} Message** *{{stub}}*</title><message>'.PHP_EOL.'{{message}}</message><debug>'.PHP_EOL.'*{{debug}}*</debug>',
                 ],
                 'result' => [
@@ -69,8 +69,8 @@
                 'method' => 'POST',
                 'textfield' => 'message',
                 'templates' => [
-                    'order' => '<title><b>{{symbol}} Order{{plural}} Created</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
-                    'cancel' => '<title><b>{{symbol}} Order{{plural}} Cancelled</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
+                    'order' => '<title><b>{{symbol}} Order{{plural}} Created</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders>'.PHP_EOL.'<message><b>Balance (USD):</b> {{balance}}</message><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
+                    'cancel' => '<title><b>{{symbol}} Order{{plural}} Cancelled</b> <i>{{stub}}</i></title><orders>'.PHP_EOL.'Direction: {{direction}} | Type: {{type}} | Size: {{size_quote}} | Price: {{price}} | Trigger: {{trigger}} | Order ID: {{id}}</orders>'.PHP_EOL.'<message><b>Balance (USD):</b> {{balance}}</message><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
                     'custom' => '<title><b>{{type}} Message</b> <i>{{stub}}</i></title><message>'.PHP_EOL.'{{message}}</message><debug>'.PHP_EOL.'<i>{{debug}}</i></debug>',
                 ],
                 'result' => [

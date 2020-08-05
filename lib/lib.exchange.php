@@ -255,12 +255,14 @@
                     }
                 }
                 if (count($results) > 0) {
-                    notifications::send('cancel', ['orders' => $results]);
+                    $balance = $this->total_balance_usd();
+                    notifications::send('cancel', ['orders' => $results, 'balance' => $balance]);
                 }
                 return $results;
             } else {
                 $result = $this->normalizer->parse_order($this->ccxt->cancel_order($id, $symbol));
-                notifications::send('cancel', ['orders' => $result]);
+                $balance = $this->total_balance_usd();
+                notifications::send('cancel', ['orders' => $result, 'balance' => $balance]);
                 return $result;
             }
             logger::error('Failed to cancel order: '.$id);
@@ -278,7 +280,7 @@
         }
 
         // Get total balance in USD value using current market data
-        public function total_balance_usd() {
+        public function total_balance_usd($params = null) {
             $balances = $this->fetch_balance();
             $usd_total = 0;
             foreach ($balances as $balance) {
@@ -583,10 +585,10 @@
                         $tpResult = $this->takeprofit($tpParams);
                         $linkedOrder->add($tpResult);
                     }
-                    notifications::send('order', ['orders' => $linkedOrder]);
+                    notifications::send('order', ['orders' => $linkedOrder, 'balance' => $balance]);
                     return $linkedOrder;
                 } else {
-                    notifications::send('order', ['orders' => $orderResult]);
+                    notifications::send('order', ['orders' => $orderResult, 'balance' => $balance]);
                     return $orderResult;
                 }
             }
@@ -699,7 +701,7 @@
             $balance = $this->total_balance_usd();
             $comment = isset($params['comment']) ? $params['comment'] : 'None';
             logger::info('TRADE | Direction: '.strtoupper($side).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
-            notifications::send('order', ['orders' => $orderResult]);
+            notifications::send('order', ['orders' => $orderResult, 'balance' => $balance]);
         }
 
         // Simple Buy Order  (Only size, price and maxsize parameters allowed. Limit or Market, depending on if you supply the price parameter)
@@ -788,7 +790,8 @@
                 logger::error("Could not automatically determine the size of the stop loss order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
             $result = $this->submit_order($params);
-            notifications::send('order', ['orders' => $result]);
+            $balance = $this->total_balance_usd();
+            notifications::send('order', ['orders' => $result, 'balance' => $balance]);
             return $result;
         }
 
@@ -821,7 +824,8 @@
                 logger::error("Could not automatically determine the size of the take profit order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
             $result = $this->submit_order($params);
-            notifications::send('order', ['orders' => $result]);
+            $balance = $this->total_balance_usd();
+            notifications::send('order', ['orders' => $result, 'balance' => $balance]);
             return $result;
         }
 
@@ -850,7 +854,7 @@
                     $balance = $this->total_balance_usd();
                     $comment = isset($params['comment']) ? $params['comment'] : 'None';
                     logger::info('TRADE:CLOSE | Symbol: '.$symbol.' | Direction: '.$side.' | Type: '.$type.' | Size: '.($requestedSize * $market->contract_size).' | Price: '.(is_null($price) ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
-                    notifications::send('order', ['orders' => $orderResult]);
+                    notifications::send('order', ['orders' => $orderResult, 'balance' => $balance]);
                     return $orderResult;
                 }
             } else {
