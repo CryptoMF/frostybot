@@ -241,21 +241,24 @@
                 if (trim($entry) == "") {
                     unset($log[$key]);
                 } else {
-                    list($date,$type,$message) = explode(" | ", $entry, 3);
-                    if (!is_null($filter)) {
-                        if ((strpos(strtolower($message),strtolower($filter)) !== false) || (strpos(strtolower($type),strtolower($filter)) !== false)) {
+                    $logentry = explode(" | ", $entry, 3);
+                    if ((is_array($logentry)) && (count($logentry) == 3)) {
+                        list($date,$type,$message) = $logentry;
+                        if (!is_null($filter)) {
+                            if ((strpos(strtolower($message),strtolower($filter)) !== false) || (strpos(strtolower($type),strtolower($filter)) !== false)) {
+                                $output[] = (object) [
+                                    'datetime' => $date,
+                                    'type' => trim($type),
+                                    'message' => trim(str_replace("\r","",$message)),
+                                ];        
+                            }
+                        } else {
                             $output[] = (object) [
                                 'datetime' => $date,
                                 'type' => trim($type),
                                 'message' => trim(str_replace("\r","",$message)),
-                            ];        
+                            ];    
                         }
-                    } else {
-                        $output[] = (object) [
-                            'datetime' => $date,
-                            'type' => trim($type),
-                            'message' => trim(str_replace("\r","",$message)),
-                        ];    
                     }
                 }
             }
