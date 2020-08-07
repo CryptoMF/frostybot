@@ -111,8 +111,9 @@
                     $bid = (isset($market['info']['bid']) ? $market['info']['bid'] : null);
                     $ask = (isset($market['info']['ask']) ? $market['info']['ask'] : null);
                     $contractSize = (isset($market['info']['contractSize']) ? $market['info']['contractSize'] : 1);
+                    $precision = $market['precision'];
                     $marketRaw = $market;
-                    $markets[] = new marketObject($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$marketRaw);
+                    $markets[] = new marketObject($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$precision,$marketRaw);
                 }
             }
             return $markets;
@@ -186,8 +187,8 @@
             $timestamp = strtotime($order['timestamp'] / 1000);
             $type = strtolower($order['type']);
             $direction = (strtolower($order['side']) == 'buy' ? 'long' : 'short');
-            $price = (isset($order['price']) ? $order['price'] : 1);
             $trigger = (isset($order['info']['stopPx']) ? $order['info']['stopPx'] : null);
+            $price = (isset($order['price']) ? $order['price'] : (!is_null($trigger) ? $trigger : null));
             $sizeBase = $order['amount'] / $price;
             $sizeQuote = $order['amount'];
             $filledBase = $order['filled'] / $price;

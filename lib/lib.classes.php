@@ -108,9 +108,10 @@
         public $bid;
         public $ask;
         public $contract_size;
+        public $precision;
         //public $raw;        
 
-        public function __construct($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$raw = null) {
+        public function __construct($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$precision,$raw = null) {
             $this->id = $id;
             $this->symbol = $symbol;
             $this->base = $base;
@@ -119,6 +120,7 @@
             $this->bid = $bid;
             $this->ask = $ask;
             $this->contract_size = $contractSize;
+            $this->precision = (object) $precision;
             //if (debug === true) {
             //    $this->raw = $raw;   
             //}

@@ -152,8 +152,9 @@
                     $bid = (isset($market['info']['bid']) ? $market['info']['bid'] : null);
                     $ask = (isset($market['info']['ask']) ? $market['info']['ask'] : null);
                     $contractSize = (isset($market['info']['contractSize']) ? $market['info']['contractSize'] : 1);
+                    $precision = $market['precision'];
                     $marketRaw = $market;
-                    $markets[] = new marketObject($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$marketRaw);
+                    $markets[] = new marketObject($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$precision,$marketRaw);
                 }
             }
             return $markets;

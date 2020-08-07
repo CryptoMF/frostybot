@@ -351,13 +351,10 @@
             if (strpos($price, ',') !== false) {                                // Layered order
                 $price = $price.(substr_count($price, ',') < 2 ? ',5' : '');    // Add default qty
                 list($range1, $range2, $qty) = explode(',', $price);
-                if (((string) $price)[0] == "+") {                              // Price expressed in relation to market price (above price)
-                    $range1 = $market->bid + abs($range1);
-                    $range2 = $market->bid + abs($range2);
-                }
-                if (((string) $price)[0] == "-") {                              // Price expressed in relation to market price (above price)
-                    $range1 = $market->ask - abs($range1);
-                    $range2 = $market->ask - abs($range2);
+                $operator = in_array(((string) $price)[0], ['+','-']) ? ((string) $price)[0] : '';  // Price express relative to current market price
+                if ($operator != '') {
+                    $range1 = $this->get_absolute_price($symbol, $operator.$range1);
+                    $range2 = $this->get_absolute_price($symbol, $operator.$range2);
                 }
                 $rangebottom = min($range1, $range2);
                 $rangetop = max($range1, $range2);
@@ -750,16 +747,24 @@
             return $parsedOrderResult;
         }
 
-        // Calculate the absolute price in case the input contains +/- relative price
-        private function get_absolute_price($symbol, $price_input) {
-          $market = $this->market(['symbol' => $symbol]);
-          if (((string) $price_input)[0] == "+") {                                // Trigger expressed in relation to market price (above price)
-              return $market->bid + abs($price_input);
-          }
-          if (((string) $price_input)[0] == "-") {                                // Trigger expressed in relation to market price (below price)
-              return $market->ask - abs($price_input);
-          }
-          return $price_input;
+        // Calculate the absolute price in case the input contains +/- relative price or a percentage
+        private function get_absolute_price($symbol, $price) {
+            $market = $this->market(['symbol' => $symbol]);
+            $operator = in_array(((string) $price)[0], ['+','-']) ? ((string) $price)[0] : '';
+            if ($operator != '') {
+                if (substr($price, -1) == '%') {                                   // Price expressed as a percentage of market price
+                    $variance = abs(str_replace('%','',$price));
+                    $price = $market->bid - ($market->bid * ((100 + $variance) / 100));
+                }                                   
+                switch ($operator) {
+                    case '+'        :   $price = $market->bid + abs($price); // Price expressed in relation to market price (above price)
+                                        break;
+                    case '-'        :   $price = $market->ask - abs($price); // Price expressed in relation to market price (below price)
+                                        break;
+                }
+                $price = round($price / $market->precision->price) * $market->precision->price;
+            }
+            return $price;
         }
 
         // Stop Loss Orders
