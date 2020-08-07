@@ -36,7 +36,6 @@
         // Add or update accounts
         public static function manage($params) {
             if ($params['stub_update'] == '__frostybot__') {
-                logger::notice('No stub parameter was provided, so just returning the current config');
                 return self::censor(self::get());
             }
             $stub = strtolower($params['stub_update']);

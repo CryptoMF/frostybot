@@ -702,6 +702,7 @@
             $comment = isset($params['comment']) ? $params['comment'] : 'None';
             logger::info('TRADE | Direction: '.strtoupper($side).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
             notifications::send('order', ['orders' => $orderResult, 'balance' => $balance]);
+            return $orderResult;
         }
 
         // Simple Buy Order  (Only size, price and maxsize parameters allowed. Limit or Market, depending on if you supply the price parameter)

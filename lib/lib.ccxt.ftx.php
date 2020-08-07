@@ -50,7 +50,7 @@ class ftx_frostybot extends ftx {
         }
 
         if ($response['success'] == true) {
-            return $this->update_order_status($order, "cancelled");
+            return $this->update_order_status($order, "canceled");
         }
 
         $result = $this->safe_value($response, 'result', array());
@@ -80,11 +80,9 @@ class ftx_frostybot extends ftx {
     private function fetch_conditional_orders($symbol, $historical = true) {
         $response = $this->privateGetConditionalOrders (['market'=>$symbol]);
         $orders = $this->safe_value($response, 'result', array());
-        //$orders = $this->parse_orders($result);
         if ($historical) {
             $response = $this->privateGetConditionalOrdersHistory (['market'=>$symbol]);
             $result = $this->safe_value($response, 'result', array());
-            //$history = $this->parse_orders($result);
             $orders = $this->merge_order_result($orders, $result);
         }
         return $orders;

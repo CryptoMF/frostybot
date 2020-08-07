@@ -5,9 +5,9 @@
     class normalizer_deribit extends normalizer_base {
 
         public $orderSizing = 'quote';                  // Base or quote
-        public $ccxtParams = [
-            'fetch_orders' => ['type'=>'any']
-        ];
+        //public $ccxtParams = [
+        //    'fetch_orders' => ['type'=>'any']
+        //];
         public $cancelAllOrdersParams = [];
 
         // Get current balances
@@ -143,11 +143,12 @@
             $markets = [];
             foreach($result as $market) {
                 if (($market['type'] != 'option') && ($market['quote'] == 'USD') && ($market['active'] == true)) {
-                    $id = $market['symbol'];
+                        $id = $market['symbol'];
                     $symbol = $market['symbol'];
                     $quote = $market['quote'];
                     $base = $market['base'];
-                    $expiration = (substr($market['info']['expiration'],0,4) == '3000' ? null : $market['info']['expiration']);
+                    $expiration_date = date('Y-m-d H:i:s', $market['info']['expiration_timestamp'] / 1000);
+                    $expiration = (substr($expiration_date,0,4) == '3000' ? null : $expiration_date);
                     $bid = (isset($market['info']['bid']) ? $market['info']['bid'] : null);
                     $ask = (isset($market['info']['ask']) ? $market['info']['ask'] : null);
                     $contractSize = (isset($market['info']['contractSize']) ? $market['info']['contractSize'] : 1);
@@ -161,17 +162,22 @@
         // Get list of positions from exchange
         public function fetch_positions() {
             $result = [];
-            $positions = $this->ccxt->private_get_positions();
-            foreach ($positions['result'] as $positionRaw) {
-                $market = $this->marketsById[$positionRaw['instrument']];
-                $base = $market->base;
-                $quote = $market->quote;
-                $direction = ($positionRaw['size']  == 0 ? 'flat' : ($positionRaw['size'] > 0 ? 'long' : ($positionRaw['size'] < 1 ? 'short' : 'null')));
-                $baseSize = abs($positionRaw['delta']);
-                $quoteSize = abs($positionRaw['amount']);
-                $entryPrice = $positionRaw['averagePrice'];
-                if (abs($baseSize) > 0) {
-                    $result[] = new positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
+            $currencies = array_keys($this->ccxt->fetch_currencies());
+            foreach ($currencies as $currency) {
+                if ($currency != 'USD') {
+                    $positions = $this->ccxt->private_get_get_positions(['currency' => $currency]);
+                    foreach ($positions['result'] as $positionRaw) {
+                        $market = $this->marketsById[$positionRaw['instrument_name']];
+                        $base = $market->base;
+                        $quote = $market->quote;
+                        $direction = ($positionRaw['size']  == 0 ? 'flat' : ($positionRaw['size'] > 0 ? 'long' : ($positionRaw['size'] < 1 ? 'short' : 'null')));
+                        $baseSize = abs($positionRaw['size_currency']);
+                        $quoteSize = abs($positionRaw['size']);   
+                        $entryPrice = $positionRaw['average_price'];
+                        if (abs($baseSize) > 0) {
+                            $result[] = new positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
+                        }
+                    }
                 }
             }
             return $result;
@@ -206,14 +212,14 @@
                     'type'   =>  $typeMap[$params['type']]
                 ];
                 if (substr($params['type'],0,2) == 'sl') {
-                    $result['price'] = isset($params['stopprice']) ? $params['stopprice'] : null;
-                    $result['params']['stopPx']   = $params['stoptrigger'];
-                    $result['params']['reduceOnly'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
-                    $result['params']['execInst'] = (isset($params['triggertype'])) ? $triggerTypeMap[$params['triggertype']] : 'mark_price';
+                    $result['params']['price'] = isset($params['stopprice']) ? $params['stopprice'] : null;
+                    $result['params']['stop_price']   = $params['stoptrigger'];
+                    $result['params']['reduce_only'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
+                    $result['params']['trigger'] = (isset($params['triggertype'])) ? $triggerTypeMap[$params['triggertype']] : 'mark_price';
                 }
                 if (substr($params['type'],0,2) == 'tp') {
-                    $result['price'] = isset($params['profitprice']) ? $params['profitprice'] : $params['profittrigger'];
-                    $result['params']['reduceOnly'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
+                    $result['params']['price'] = isset($params['profitprice']) ? $params['profitprice'] : $params['profittrigger'];
+                    $result['params']['reduce_only'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
                 }
             }
             return $result;
@@ -226,11 +232,11 @@
             }
             $market = $this->get_market_by_symbol($order['symbol']);
             $id = $order['id'];
-            $timestamp = strtotime($order['timestamp'] / 1000);
+            $timestamp = round($order['timestamp'] / 1000);
             $type = strtolower($order['type']);
             $direction = (strtolower($order['side']) == 'buy' ? 'long' : 'short');
-            $price = (isset($order['price']) ? $order['price'] : 1);
-            $trigger = (isset($order['info']['stopPx']) ? $order['info']['stopPx'] : null);
+            $trigger = (isset($order['info']['stop_price']) ? $order['info']['stop_price'] : null);
+            $price = (isset($order['price']) ? $order['price'] : (!is_null($trigger) ? $trigger : null));
             $sizeBase = ($order['amount'] * $market->contract_size) / $price;
             $sizeQuote = ($order['amount'] * $market->contract_size);
             $filledBase = ($order['filled'] * $market->contract_size) / $price;

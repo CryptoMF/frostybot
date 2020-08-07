@@ -67,7 +67,7 @@
             $where = (is_object($where) ? (array) $where : $where);
             $wherelist = [];
             foreach ($where as $key => $value) {
-                $wherelist[] = "`".$key."`='".$value."'";
+                $wherelist[] = "`".$key."`='".$value."' COLLATE NOCASE";
             }
             $sql = "SELECT * FROM `".$table."`".(count($wherelist) > 0 ? " WHERE ".implode(' AND ', $wherelist) : "").";";
             //logger::debug($sql);
@@ -95,7 +95,7 @@
             }
             $wherelist = [];
             foreach ($where as $key => $value) {
-                $wherelist[] = "`".$key."`='".$value."'";
+                $wherelist[] = "`".$key."`='".$value."' COLLATE NOCASE";
             }
             $sql = "UPDATE `".$table."` SET ".implode(',', $datalist).(count($wherelist) > 0 ? " WHERE ".implode(' AND ', $wherelist) : "").";";
             $sql = str_replace("'CURRENT_TIMESTAMP'","CURRENT_TIMESTAMP", $sql);
@@ -116,7 +116,7 @@
             $data = (is_object($data) ? (array) $data : $data);
             $wherelist = [];
             foreach ($data as $key => $value) {
-                $wherelist[] = "`".$key."`='".$value."'";
+                $wherelist[] = "`".$key."`='".$value."' COLLATE NOCASE";
             }
             $sql = "DELETE FROM `".$table."`".(count($wherelist) > 0 ? " WHERE ".implode(' AND ', $wherelist) : "").";";
             //logger::debug($sql);
