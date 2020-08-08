@@ -225,7 +225,7 @@
             } else {
                 foreach ((array) $params as $key => $value) {
                     if (!is_array($value)) {
-                        $text = str_replace('{{'.$key.'}}', $value, $text);
+                        $text = str_replace('{{'.$key.'}}', (is_object($value) ? json_encode($value) : $value), $text);
                     }
                 }
             }
