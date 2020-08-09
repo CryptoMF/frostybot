@@ -22,7 +22,7 @@
             } else {
                 $commands = explode("|", str_replace("\n","|",trim($commandstr)));
             }
-            if ((is_array($commands)) && (count($commands) >= 1)) {
+            if ((is_array($commands)) && (count($commands) > 1)) {
                 $overallResult = true;
                 $allResults = [];
                 foreach ($commands as $command) {
@@ -92,7 +92,11 @@
         // Parse JSON parameters (Exmaple: { 'command': 'ftx:close', 'symbol': 'BTC-PERP' })
         private function parseJson($arg) {
             $this->format = 'JSON';
-            $this->parseArray(json_decode($arg, true));
+            $arr = json_decode($arg, true);
+            if ((count($arr) == 1) && (isset($arr[0]))) {
+                $arr = $arr[0];
+            }
+            $this->parseArray($arr);
         }
 
         // Check if text is JSON or Inline format and parse accoringly
