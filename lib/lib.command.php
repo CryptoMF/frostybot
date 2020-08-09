@@ -20,7 +20,7 @@
             if (is_json($commandstr)) {
                 $commands = json_decode($commandstr, true);
             } else {
-                $commands = explode("|", str_replace("\n","|",trim($commandstr)));
+                $commands = explode("|", str_replace("\n","|",str_replace("\r","",trim($commandstr))));
             }
             if ((is_array($commands)) && (count($commands) > 1)) {
                 $overallResult = true;
