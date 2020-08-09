@@ -553,13 +553,13 @@
                     'side'   => $side,
                     'price'  => (isset($params['price']) ? $params['price'] : null)
                 ];
-                $orderResult = $this->submit_order($orderParams);
+                $orderResult = $this->submit_order($orderParams, false);
                 $balance = $this->total_balance_usd();
                 $comment = isset($params['comment']) ? $params['comment'] : 'None';
                 logger::info('TRADE | Direction: '.strtoupper($side).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
                 if ((isset($params['stoptrigger'])) || (isset($params['profittrigger']))) {
                     $marketprice = $side == "buy" ? $market->bid : $market->ask;
-                    if (is_a($orderResult,'linkedOrderObject')) {
+                    if (is_a($orderResult,'frostybot\linkedOrderObject')) {
                         $linkedOrder = $orderResult;
                     } else {
                         $linkedOrder = new \frostybot\linkedOrderObject($stub, $symbol);
@@ -576,7 +576,7 @@
                             'reduce' => (isset($params['reduce']) ? $params['reduce'] : false),
                             'triggertype' => (isset($params['triggertype']) ? $params['triggertype'] : null),
                         ];
-                        $slResult = $this->stoploss($slParams);
+                        $slResult = $this->stoploss($slParams, false);
                         $linkedOrder->add($slResult);
                     }
                     // Take profit orders
@@ -588,7 +588,7 @@
                             'entryprice' => (!is_null($price) ? $price : $marketprice),
                             'reduce' => (isset($params['reduce']) ? $params['reduce'] : false)
                         ];
-                        $tpResult = $this->takeprofit($tpParams);
+                        $tpResult = $this->takeprofit($tpParams, false);
                         $linkedOrder->add($tpResult);
                     }
                     // Trailing stop orders
@@ -716,11 +716,10 @@
                 'side'   => $side,
                 'price'  => (isset($price) ? $price : null)
             ];
-            $orderResult = $this->submit_order($orderParams);
+            $orderResult = $this->submit_order($orderParams, true);
             $balance = $this->total_balance_usd();
             $comment = isset($params['comment']) ? $params['comment'] : 'None';
             logger::info('TRADE | Direction: '.strtoupper($side).' | Symbol: '.$symbol.' | Type: '.$type.' | Size: '.$size.' | Price: '.($price == "" ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
-            notifications::send('order', ['orders' => $orderResult, 'balance' => $balance]);
             return $orderResult;
         }
 
@@ -735,13 +734,16 @@
         }
 
         // Submit an order the exchange
-        private function submit_order($params) {
+        private function submit_order($params, $notify = false) {
             if ((isset($params['price'])) && (!is_null($params['price'])) && (strpos($params['price'], ',') !== false)) {     // This is a layered order
                 $result = $this->layered_order($params);
             } else {                                                                             // This is a non-layered order
                 $result = $this->regular_order($params);
             }
-            //notifications::send('order', ['orders' => $result]);
+            if ($notify === true) {
+                $balance = $this->total_balance_usd();
+                notifications::send('order', ['orders' => $result, 'balance' => $balance]);
+            }
             return $result;
         }
 
@@ -752,7 +754,7 @@
             $amount = $params['amount'] / count($prices);
             foreach ($prices as $price) {
                 $params['amount'] = $amount;
-                $params['price'] = $price;
+                $params['price'] = $this->get_absolute_price($params['symbol'], $price);
                 $orderResult = $this->regular_order($params);
                 $linkedOrder->add($orderResult);
             }
@@ -814,7 +816,7 @@
         // Stop Loss Orders
         // Limit or Market, depending on if you supply the 'price' parameter or not
         // Buy or Sell is automatically determined by comparing the 'stoptrigger' price and current market price. This is a required parameter.
-        public function stoploss($params) {
+        public function stoploss($params, $notify = false) {
             $symbol = $params['symbol'];
             $trigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
             $price = isset($params['stopprice']) ? $params['stopprice'] : $trigger;
@@ -839,16 +841,15 @@
             if (!($params['amount'] > 0)) {
                 logger::error("Could not automatically determine the size of the stop loss order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
-            $result = $this->submit_order($params);
+            $result = $this->submit_order($params, $notify);
             $balance = $this->total_balance_usd();
-            notifications::send('order', ['orders' => $result, 'balance' => $balance]);
             return $result;
         }
 
         // Take Profit Orders
         // Buy or Sell is automatically determined by comparing the 'profittrigger' price and current market price. This is a required parameter.
         // Take profit orders are always limit orders by design
-        public function takeprofit($params) {
+        public function takeprofit($params, $notify = false) {
             $symbol = $params['symbol'];
             $trigger = $this->get_absolute_price($symbol, $params['profittrigger']);
             $price = isset($params['profitprice']) ? $params['profitprice'] : $trigger;
@@ -873,16 +874,15 @@
             if (!($params['amount'] > 0)) {
                 logger::error("Could not automatically determine the size of the take profit order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
-            $result = $this->submit_order($params);
+            $result = $this->submit_order($params, $notify);
             $balance = $this->total_balance_usd();
-            notifications::send('order', ['orders' => $result, 'balance' => $balance]);
             return $result;
         }
 
 
         // Trailing stop (not supported on all exchanges)
         // Buy or Sell is automatically determined by trailstop being positive or negative (Position = buy, Negative = sell)
-        public function trailstop($params) {
+        public function trailstop($params, $notify = false) {
             if ($this->ccxt->id != 'ftx') {
                 logger::error('Trailing stop is currently only supported on FTX');
             }
@@ -909,14 +909,13 @@
             if (!($params['amount'] > 0)) {
                 logger::error("Could not automatically determine the size of the trailing stop order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
-            $result = $this->submit_order($params);
+            $result = $this->submit_order($params, $notify);
             $balance = $this->total_balance_usd();
-            notifications::send('order', ['orders' => $result, 'balance' => $balance]);
             return $result;
         }
 
         // Close Position
-        public function close($params) {
+        public function close($params, $notify = false) {
             $symbol = $params['symbol'];
             $size = str_replace('%', '', isset($params['size']) ? $params['size'] : '100%');
             $orderSizing = (isset($this->normalizer->orderSizing) ? $this->normalizer->orderSizing : 'quote');
@@ -936,11 +935,10 @@
                         'price'  => (isset($params['price']) ? $params['price'] : null),
                         'reduce' => true
                     ];
-                    $orderResult = $this->submit_order($orderParams);
+                    $orderResult = $this->submit_order($orderParams, $notify);
                     $balance = $this->total_balance_usd();
                     $comment = isset($params['comment']) ? $params['comment'] : 'None';
                     logger::info('TRADE:CLOSE | Symbol: '.$symbol.' | Direction: '.$side.' | Type: '.$type.' | Size: '.($requestedSize * $market->contract_size).' | Price: '.(is_null($price) ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
-                    notifications::send('order', ['orders' => $orderResult, 'balance' => $balance]);
                     return $orderResult;
                 }
             } else {

@@ -225,13 +225,13 @@
                                                 break;
                         case 'SELL'         :   $result = $this->exchange->sell(requiredParams($this->params,['symbol', 'size']));
                                                 break;
-                        case 'CLOSE'        :   $result = $this->exchange->close(requiredParams($this->params,['symbol']));
+                        case 'CLOSE'        :   $result = $this->exchange->close(requiredParams($this->params,['symbol']), true);
                                                 break;
-                        case 'STOPLOSS'     :   $result = $this->exchange->stoploss(requiredParams($this->params,['symbol','stoptrigger']));
+                        case 'STOPLOSS'     :   $result = $this->exchange->stoploss(requiredParams($this->params,['symbol','stoptrigger']), true);
                                                 break;
-                        case 'TAKEPROFIT'   :   $result = $this->exchange->takeprofit(requiredParams($this->params,['symbol','profittrigger']));
+                        case 'TAKEPROFIT'   :   $result = $this->exchange->takeprofit(requiredParams($this->params,['symbol','profittrigger']), true);
                                                 break;
-                        case 'TRAILSTOP'    :   $result = $this->exchange->trailstop(requiredParams($this->params,['symbol','trailstop']));
+                        case 'TRAILSTOP'    :   $result = $this->exchange->trailstop(requiredParams($this->params,['symbol','trailstop']), true);
                                                 break;
                         default             :   logger::error('Unknown command: '.$command);
                                                 $result = false;

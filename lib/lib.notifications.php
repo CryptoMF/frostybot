@@ -167,19 +167,19 @@
         // Check if orders passed are complex (linked order, layed order, array of orders)
         private static function orderplural($params = null) {
             if (self::noorders($params)) { return 's'; }
-            return (((is_object($params)) && (get_class($params) == 'linkedOrderObject')) || ((is_array($params)) && (get_class($params[0]) == 'orderObject'))) ? 's' : '';
+            return (((is_object($params)) && (get_class($params) == 'frostybot\linkedOrderObject')) || ((is_array($params)) && (get_class($params[0]) == 'frostybot\orderObject'))) ? 's' : '';
         }    
         
         // Get order symbol
         private static function ordersymbol($params = null) {
             if (self::noorders($params)) { return $GLOBALS['symbol']; }
-            if ((is_object($params)) && (get_class($params) == 'orderObject')) {
+            if ((is_object($params)) && (get_class($params) == 'frostybot\orderObject')) {
                 $symbol = $params->market->symbol;
             }
-            if ((is_object($params)) && (get_class($params) == 'linkedOrderObject')) {   // Linked or Layered order
+            if ((is_object($params)) && (get_class($params) == 'frostybot\linkedOrderObject')) {   // Linked or Layered order
                 $symbol = $params->symbol;
             }
-            if ((is_array($params)) && (get_class($params[0]) == 'orderObject')) {       // Array of orders
+            if ((is_array($params)) && (get_class($params[0]) == 'frostybot\orderObject')) {       // Array of orders
                 $symbol = $params[0]->market->symbol;
             }
             return $symbol;
@@ -189,7 +189,7 @@
         private static function parseorders($text, $params = null) {
             if (self::noorders($params)) { return ''; }
             $content = '';
-            if ((is_object($params)) && (get_class($params) == 'orderObject')) {        // Single order
+            if ((is_object($params)) && (get_class($params) == 'frostybot\orderObject')) {        // Single order
                 $data = [];
                 $order = $params;
                 $market = (array) $order->market;
@@ -200,12 +200,12 @@
                 $data = array_merge($market, $order);
                 $content = self::parsetext($text, $data);
             }
-            if ((is_object($params)) && (get_class($params) == 'linkedOrderObject')) {   // Linked or Layered order
+            if ((is_object($params)) && (get_class($params) == 'frostybot\linkedOrderObject')) {   // Linked or Layered order
                 foreach($params->orders as $order) {
                     $content .= self::parseorders($text, $order);
                 }
             }
-            if ((is_array($params)) && (get_class($params[0]) == 'orderObject')) {       // Array of orders
+            if ((is_array($params)) && (get_class($params[0]) == 'frostybot\orderObject')) {       // Array of orders
                 foreach($params as $order) {
                     $content .= self::parseorders($text, $order);
                 }
