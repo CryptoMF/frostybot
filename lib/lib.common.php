@@ -92,6 +92,20 @@
         return $data;
     }
 
+    // Return the current global request UID (UID generate once per request)
 
+    function requestuid() {
+        if (!isset($GLOBALS['requestuid'])) {
+            $GLOBALS['requestuid'] = md5(uniqid('requestuid', true));
+        }
+        return $GLOBALS['requestuid'];
+    }
+
+    // Check if supplied string is JSON
+
+    function is_json($str) {
+        json_decode($str);
+        return (json_last_error() == JSON_ERROR_NONE);
+    }
 
 ?>

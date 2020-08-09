@@ -13,8 +13,8 @@
         ];
 
         // Get current balances
-        public function fetch_balance($data) {
-            $result = $data->result;
+        public function fetch_balance() {
+            $result = $this->ccxt->fetch_balance();
             unset($result['info']);
             unset($result['free']);
             unset($result['used']);
@@ -31,7 +31,7 @@
                 $balanceUsed = $balance['used'];
                 $balanceTotal = $balance['total'];
                 if ($balanceTotal > 0) {
-                    $balances[$currency] = new balanceObject($currency,$price,$balanceFree,$balanceUsed,$balanceTotal);
+                    $balances[$currency] = new \frostybot\balanceObject($currency,$price,$balanceFree,$balanceUsed,$balanceTotal);
                 }
             }
             return $balances;
@@ -54,7 +54,7 @@
             $tfs = $this->fetch_timeframes();
             $actualtf = $tfs[$timeframe];
             $endtime = ((floor((time() / 60) / $actualtf) * $actualtf) * 60) + ($actualtf * 60);
-            $ohlcvurl = $this->ccxt->urls['api'].'/api/markets/'.$symbol.'/candles?resolution='.((int) $timeframe).'&limit='.$count.'&end_time='.$endtime;
+            $ohlcvurl = 'https://www.ftx.com/api/markets/'.$symbol.'/candles?resolution='.((int) $timeframe).'&limit='.$count.'&end_time='.$endtime;
             //echo $ohlcvurl.PHP_EOL.'end: '.date('Y-m-d H:i:00',$endtime).PHP_EOL.'periods: '.$count.PHP_EOL;
             //die;
             $ohlcv = [];
@@ -67,15 +67,15 @@
                     $low = $rawEntry->low;
                     $close = $rawEntry->close;
                     $volume = $rawEntry->volume;
-                    $ohlcv[] = new ohlcvObject($symbol,$actualtf,$timestamp,$open,$high,$low,$close,$volume,$rawEntry);
+                    $ohlcv[] = new \frostybot\ohlcvObject($symbol,$actualtf,$timestamp,$open,$high,$low,$close,$volume,$rawEntry);
                 }
             }
             return $ohlcv;
         }        
 
         // Get list of markets from exchange
-        public function fetch_markets($data) {
-            $result = $data->result;
+        public function fetch_markets() {
+            $result = $this->ccxt->fetch_markets();
             $markets = [];
             //$marketFilters = ['BEAR','BULL','MOON','DOOM','HEDGE','MOVE'];
             $marketFilters = [];
@@ -98,7 +98,7 @@
                         $contractSize = (isset($market['info']['contractSize']) ? $market['info']['contractSize'] : 1);
                         $precision = $market['precision'];
                         $marketRaw = $market;
-                        $markets[] = new marketObject($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$precision,$marketRaw);
+                        $markets[] = new \frostybot\marketObject($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$precision,$marketRaw);
                     }
                 }
             }
@@ -108,18 +108,128 @@
         // Get list of positions from exchange
         public function fetch_positions() {
             $result = [];
-            $positions = $this->ccxt->private_get_positions();
+            $positions = $this->ccxt->private_get_positions(['showAvgPrice' => true]);
             foreach ($positions['result'] as $positionRaw) {
                 $market = $this->marketsBySymbol[$positionRaw['future']];
                 $direction = $positionRaw['size']  == 0 ? 'flat' : ($positionRaw['side'] == 'buy' ? 'long' : ($positionRaw['side'] == 'sell' ? 'short' : 'null'));
                 $baseSize = round($positionRaw['size'],5);
-                $entryPrice = $positionRaw['entryPrice'];
+                $entryPrice = $positionRaw['recentAverageOpenPrice'];
                 $quoteSize = $baseSize * $entryPrice;
                 if (abs($baseSize) > 0) {
-                    $result[] = new positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
+                    $result[] = new \frostybot\positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
                 }
             }
             return $result;
+        }
+
+        // Cancel specific order
+        public function cancel_order($id, $symbol) {          
+            $order = $this->fetch_order($id, $symbol);
+            if (in_array($order['type'],['limit','market'])) {  // If it's not a standard order, then it must be a conditional order
+                $response = $this->ccxt->privateDeleteOrdersOrderId(['order_id'=>$id]);
+            } else {
+                $response = $this->ccxt->privateDeleteConditionalOrdersOrderId (['order_id'=>$id]);
+            }
+    
+            if ($response['success'] == true) {
+                return $this->update_order_status($order, "canceled");
+            }
+    
+            $result = $this->safe_value($response, 'result', array());
+            return $result;
+        }
+
+        // Cancel all open orders
+        public function cancel_all_orders ($symbol) {
+            $orders = $this->fetch_open_orders($symbol);
+            $results = [];
+            if (is_array($orders    )) {
+                foreach($orders as $order) {
+                    $id = $order['id'];
+                    if (in_array($order['type'],['limit','market'])) {  // If it's not a standard order, then it must be a conditional order
+                        $response = $this->ccxt->privateDeleteOrdersOrderId (['order_id'=>$id]);
+                    } else {
+                        $response = $this->ccxt->privateDeleteConditionalOrdersOrderId (['order_id'=>$id]);
+                    }
+                    $results[] = ($response['success'] == true ? $this->update_order_status($order, "cancelled") : $order);
+                }
+            }
+            return $results;
+        }
+
+
+        // Fetch conditional orders (take profit and stop loss)
+        private function fetch_conditional_orders($symbol, $historical = true) {
+            $response = $this->ccxt->privateGetConditionalOrdersHistory (['market'=>$symbol]);
+            $result = $this->ccxt->safe_value($response, 'result', array());
+            return $result;
+        }
+    
+        // Fetch a conditional order (take profit and stop loss)
+        private function fetch_conditional_order($id, $symbol) {
+            $orders = $this->fetch_conditional_orders( $symbol );
+            foreach ($orders as $order) {
+                if (($order['id'] == $id) && ($order['market'] == $symbol)) {
+                    return $order;
+                }
+            }
+            return false;
+        }
+    
+        // Fetch a specific order
+        public function fetch_order($id, $symbol) {
+            try {
+                $response = $this->ccxt->privateGetOrdersOrderId(['order_id' => $id]);
+            } catch (Exception $e) {
+                $result = $this->fetch_conditional_order($id, $symbol);
+                if ($result !== false) {
+                    return $this->ccxt->parse_order($result);
+                }
+                return false;
+            }
+            
+            $result = $this->ccxt->safe_value($response, 'result', array());
+            return $this->ccxt->parse_order($result);
+        }
+    
+
+        // Fetch all open orders for symbol
+        public function fetch_open_orders($symbol, $since = null, $limit = null) {
+            $request = [];
+            $this->ccxt->load_markets();
+            $market = null;
+            if ($symbol !== null) {
+                $market = $this->ccxt->market ($symbol);
+                $request['market'] = $market['id'];
+            }
+            $response = $this->ccxt->privateGetOrders(['market' => $symbol]);    
+            if ($response['success'] == true) {
+                $conditional = $this->fetch_conditional_orders($symbol, false);
+                $response['result'] = array_merge($response['result'], $conditional);
+            }
+            $results = $this->ccxt->safe_value($response, 'result', array());
+            $filtered = [];
+            foreach($results as $result) {
+                if ($result['status'] == 'open') {
+                    $filtered[] = $result;
+                }
+            }
+            return $this->ccxt->parse_orders($filtered, $market, $since, $limit);
+        }
+    
+        public function fetch_orders($symbol, $since = null, $limit = null, $params = []) {
+            $request = [];
+            $this->ccxt->load_markets();
+            $market = null;
+            if ($symbol !== null) {
+                $market = $this->ccxt->market ($symbol);
+                $request['market'] = $market['id'];
+            }
+            $response = $this->ccxt->privateGetOrdersHistory($request);
+            $normalOrders = $this->ccxt->safe_value($response, 'result', array());
+            $conditionalOrders = $this->fetch_conditional_orders($symbol, true);
+            $result = $this->merge_order_result($normalOrders, $conditionalOrders);
+            return $this->ccxt->parse_orders($result, null, $since, $limit);
         }
 
         // Create parameters for order
@@ -175,9 +285,9 @@
             $sizeQuote = $order['amount'] * $price;
             $filledBase = $order['filled'];
             $filledQuote = $order['filled'] * $price;
-            $status = $order['status'];
+            $status = str_replace('canceled', 'cancelled', $order['status']);
             $orderRaw = $order;
-            return new orderObject($market,$id,$timestamp,$type,$direction,$price,$trigger,$sizeBase,$sizeQuote,$filledBase,$filledQuote,$status,$orderRaw);
+            return new \frostybot\orderObject($market,$id,$timestamp,$type,$direction,$price,$trigger,$sizeBase,$sizeQuote,$filledBase,$filledQuote,$status,$orderRaw);
         }
 
     }

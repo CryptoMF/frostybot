@@ -37,6 +37,24 @@
             return $retarr;
         }
 
+        protected function update_order_status($order, $status) {
+            if (array_key_exists('status', $order)) {
+                $order['info']['status'] = $status;
+                $order['status'] = $status;
+            } else {
+                foreach($order as $key => $val) {
+                    $order[$key] = $this->update_order_status($val, $status);
+                }
+            }
+            return $order;
+        }
+
+        protected function merge_order_result($orders1, $orders2) {
+            $orders1 = (array_key_exists('status', $orders1) ? [$orders1] : $orders1);
+            $orders2 = (array_key_exists('status', $orders2) ? [$orders2] : $orders2);
+            $orders = array_merge($orders1, $orders2);
+            return count($orders) == 1 ? $orders[0] : $orders;
+        }
 
 
     }

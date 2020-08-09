@@ -1,6 +1,8 @@
 <?php
 
     set_time_limit(0);
+    ignore_user_abort(true);
+    ob_start();
 
     $time_start = microtime(true);
 
@@ -34,6 +36,11 @@
             $time_end = microtime(true);
             $duration = round($time_end - $time_start,5);
             logger::debug('Script execution time: '.$duration.' seconds');
+            $cachestats = $GLOBALS['cachestats']['totals'];
+            $cachehits = $cachestats['hit'];
+            $cachemisses = $cachestats['miss'];
+            $cachehitratio = round(($cachehits / ($cachehits + $cachemisses)) * 100, 0);
+            logger::debug('Cache Stats: '.$cachestats['miss'].' Misses, '.$cachestats['hit'].' Hits, '.$cachehitratio.'% Hit Ratio');
             $output = (object) [
                 'results' => $this->getResults(),
                 'messages' => $this->getMessages(),
@@ -56,6 +63,7 @@
 
         public $code;
         public $type;
+        public $class;
         public $message;
         public $data;
 
@@ -67,6 +75,22 @@
                 $this->type = gettype($data);
                 if (is_null($this->type)) {
                     $this->type='none';
+                }
+                if (strtolower($this->type) == 'object') {
+                    $this->class = get_class($data);
+                }
+                if ((strtolower($this->type) == 'array') && (count($data) > 0)) {
+                    $subtype = gettype($data[array_keys($data)[0]]);
+                    $allsame = true;
+                    foreach ($data as $check) {
+                        if (gettype($check) !== $subtype) {
+                            $allsame = false;
+                        }
+                    }
+                    if ($allsame === true) {
+                        $class = strtolower($subtype) == 'object' ? get_class($data[array_keys($data)[0]]) : $subtype;
+                        $this->class = $class;
+                    }
                 }
                 $this->data = $data;
             }
@@ -80,12 +104,12 @@
             if (((is_null($this->type)) || ($this->type == "NULL"))  && (strtolower($this->message) == 'success')) {
                 $result['type'] = "SUCCESS";
             } else {
-                $result['type'] = strtoupper($this->type);
+                $result['type'] = $this->type;
+            }
+            if (!is_null($this->class)) {
+                $result['class'] = $this->class;
             }
             if (!is_null($this->data)) {
-                if(is_object($this->data)) {
-                    $result['class'] = get_class($this->data);
-                }
                 $result['data'] = $this->data;
             }
             return (object) $result;
@@ -136,8 +160,6 @@
 
     function message($code,$type,$message,$data = []) {
         global $__outputs__;
-        //$logtype = strtolower($type);
-        //logger::$logtype($message);
         $__outputs__->addMessage($code,$type,$message,$data);
     }
 
@@ -271,6 +293,6 @@
 
     }
 
-
+    ob_end_flush();
 
 ?>

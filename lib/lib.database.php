@@ -28,10 +28,16 @@
 
         // Initialize missing tables
         private function inittables() {
+            $tableresult = $this->select('sqlite_master', ['type' => 'table']);
+            $tables = [];
+            if (count($tableresult) > 0) {
+                foreach($tableresult as $table) {
+                    $tables[] = $table->name;
+                }
+            }
             foreach(glob('db/sql/*.sql') as $sqlFile) {
                 $table = str_replace(['db/sql/','.sql'], '', $sqlFile);
-                $checktable = $this->select('sqlite_master', ['type' => 'table', 'name' => $table]);
-                if (count($checktable) == 0) {
+                if (!in_array($table, $tables)) {
                     $sql = file_get_contents($sqlFile);
                     logger::debug('Initializing missing table: '.$table);
                     $this->exec($sql);

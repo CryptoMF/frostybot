@@ -8,17 +8,21 @@
         private $exchange;
         private $commandStr;
         private $type;
+        private $format;
 
         // Override constructor (for internal used only)
-        public function __construct($commandStr = null) {
-            $this->commandStr = $commandStr;
+        public function __construct($command = null) {
+            $this->commandStr = is_array($command) ? json_encode($command) : $command;
         }
 
         // Execute multiple commands if provided
-        private function _execMultiple($commandstr) {
-            $commandstr = str_replace("\n",'|',$commandstr);
-            if (strpos($commandstr,'|')) {
-                $commands = explode('|',$commandstr);
+        private function execMultiple($commandstr) {
+            if (is_json($commandstr)) {
+                $commands = json_decode($commandstr, true);
+            } else {
+                $commands = explode("|", str_replace("\n","|",trim($commandstr)));
+            }
+            if ((is_array($commands)) && (count($commands) > 1)) {
                 $overallResult = true;
                 $allResults = [];
                 foreach ($commands as $command) {
@@ -41,146 +45,118 @@
         }
 
         // Find out if we're using CLI or URL, and pass it to the correct parsing method
-        private function _parseParams() {
+        private function parseParams() {
             if (!is_null($this->commandStr)) {
-                $this->_parseInternal();
+                $this->parseInternal();                     // This is an internal command (cron/unit test etc)
             } else {
                 $execname = isset($_SERVER['argv'][0]) ? basename($_SERVER['argv'][0]) : '';
                 if ($execname == 'frostybot') {
-                    $this->_parseCLI();
+                    $this->parseCLI();                      // This is a CLI command
                 } else {
-                    $this->_parseURL();
+                    $this->parseURL();                      // This is an HTTP POST/GET request
                 }
+            }
+        }
+
+        // Parse parameter array
+        private function parseArray($arr) {
+            $commandStr = $arr['command'];
+            if(strpos($commandStr,':') === false) {
+                $stub = "__frostybot__";
+                $command = $commandStr;
+            } else {
+                list($stub,$command) = explode(":", $commandStr);
+            }
+            $this->params['stub'] = strtolower($stub);
+            $this->params['command'] = strtolower($command);
+            unset($arr['command']);
+            foreach($arr as $key => $value) {
+                $this->params[$key] = str_replace(['“','”'],'',$value);
+            }
+            logger::debug('Parsing complete: '. $this->type.' request received in '.$this->format.' format');
+        }
+
+        // Parse inline parameters (Example: ftx:close symbol=BTC-PERP)
+        private function parseInline($arg) {
+            $this->format = 'inline';
+            $params = explode(" ", $arg);
+            $arr = ['command' => $params[0]];
+            array_shift($params);
+            foreach($params as $param) {
+                list($key, $value) = explode("=", $param);
+                $arr[$key] = $value;
+            }
+            $this->parseArray($arr);
+        }
+
+        // Parse JSON parameters (Exmaple: { 'command': 'ftx:close', 'symbol': 'BTC-PERP' })
+        private function parseJson($arg) {
+            $this->format = 'JSON';
+            $this->parseArray(json_decode($arg, true));
+        }
+
+        // Check if text is JSON or Inline format and parse accoringly
+        private function parseJsonOrInline($arg) {
+            $GLOBALS['cmd'] = $arg;
+            if (is_json($arg)) {
+                $this->parseJson($arg);                     // Arguments are in JSON format
+            } else {
+                $this->parseInline($arg);                   // Arguments are in inline format
             }
         }
 
         // Parse URL GET/POST paramters (from TradingView)
-        private function _parseURL() {
-            $this->type = "URL";
-            // Check that request is coming from an authorised Trading View IP or a whitelisted IP
-
+        private function parseURL() {
             whitelist::validate($_SERVER['REMOTE_ADDR']);
-            //$tradingview = ['52.89.214.238','34.212.75.30','54.218.53.128','52.32.178.7'];
-            //$whitelist = array_merge($tradingview, whitelist);
-            //if (isset($_SERVER['REMOTE_ADDR']) && (!in_array($_SERVER['REMOTE_ADDR'], $whitelist))) {
-            //  logger::error('Request received from invalid address: ' . $_SERVER['REMOTE_ADDR']);
-            //}
-
-            $rawPostText = file_get_contents('php://input');
-            $postArgs = [];
-            if (isset($_GET['command'])) {
-                $exchangeCommand = $_GET['command'];
-                if(strpos($exchangeCommand,':') === false) {
-                    $stub = "__frostybot__";
-                    $command = $exchangeCommand;
-                } else {
-                    list($stub,$command) = explode(":", $exchangeCommand);
-                }
-                $this->params['stub'] = strtolower($stub);
-                $this->params['command'] = strtolower($command);
-                $params = $_GET;
-                unset($params['command']);
-                foreach($params as $key => $value) {
-                    $this->params[strtolower($key)] = str_replace(['“','”'],'',$value);
-                }
+            if (isset($_GET['command'])) {                  // Parse HTTP GET Parameters
+                $this->type = 'GET';
+                $this->format = 'URL';
+                $this->parseArray($_GET);
             }
-            if ($rawPostText !== "") {
-                $this->_execMultiple($rawPostText);
-                $postArgs = explode(" ", $rawPostText);
-                if (!isset($exchangeCommand)) {
-                    $exchangeCommand = $postArgs[0];
-                    if(strpos($exchangeCommand,':') === false) {
-                        $stub = "__frostybot__";
-                        $command = $exchangeCommand;
-                    } else {
-                        list($stub,$command) = explode(":", $exchangeCommand);
-                    }
-                    $this->params['stub'] = strtolower($stub);
-                    $this->params['command'] = strtolower($command);
-                    array_shift($postArgs);
-                }
-                $params = $postArgs;
-                foreach($params as $param) {
-                    list($key, $value) = explode("=", $param);
-                    $this->params[strtolower($key)] = str_replace(['“','”'],'',$value);
-                }
+            $postdata = file_get_contents('php://input');
+            if ($postdata !== "") {                         // Parse HTTP POST Parameters
+                $this->type = 'POST';
+                $this->execMultiple($postdata);             // Check if this is a multi-command instruction or a single instruction
+                $this->parseJsonOrInline($postdata);        // Check if post data is JSON or Inline format and parse accordingly
             }
         }
 
         // Parse CLI parameters
-        private function _parseCLI() {
-            $this->type = "CLI";
+        private function parseCLI() {
+            $this->type = "CLI";                            // This is a CLI request
             $args = $_SERVER['argv'];
             if (isset($args[1])) {
-                $exchangeCommand = $args[1];
-                $this->_execMultiple($exchangeCommand);
-                if(strpos($exchangeCommand,':') === false) {
-                    $stub = "__frostybot__";
-                    $command = $exchangeCommand;
-                } else {
-                    list($stub,$command) = explode(":", strtolower($args[1]));
-                }
-                $this->params['stub'] = $stub;
-                $this->params['command'] = $command;
+                array_shift($args);
+                $commandstr = trim(implode(" ",$args));
+                $this->execMultiple($commandstr);           // Check if this is a multi-command instruction or a single instruction
+                $this->parseJsonOrInline($commandstr);      // Check if CLI arguments are JSON or Inline format and parse accordingly
             } else {
                 die(PHP_EOL.'USAGE:   '.$args[0].' <stub>:<command> param=val param=val'.PHP_EOL.PHP_EOL.'EXAMPLE: '.$args[0].' deribit:POSITION symbol=BTC-PERPETUAL'.PHP_EOL.PHP_EOL);
-            }
-            $params = isset($args[2]) ? array_slice($args,2) : [];
-            foreach($params as $param) {
-                list($key, $value) = explode("=", $param);
-                $this->params[$key] = str_replace(['“','”'],'',$value);
             }
         }
 
         // Parse Internal parameters
-        private function _parseInternal() {
-            $this->type = "Internal";
-            $args = explode(" ",$this->commandStr);
-            if (isset($args[0])) {
-                $exchangeCommand = $args[0];
-                if(strpos($exchangeCommand,':') === false) {
-                    $stub = "__frostybot__";
-                    $command = $exchangeCommand;
-                } else {
-                    list($stub,$command) = explode(":", strtolower($args[0]));
-                }
-                $this->params['stub'] = $stub;
-                $this->params['command'] = $command;
-            } else {
-                die(PHP_EOL.'USAGE:   '.$args[0].' <stub>:<command> param=val param=val'.PHP_EOL.PHP_EOL.'EXAMPLE: '.$args[0].' deribit:POSITION symbol=BTC-PERPETUAL'.PHP_EOL.PHP_EOL);
-            }
-            $params = isset($args[1]) ? array_slice($args,1) : [];
-            foreach($params as $param) {
-                list($key, $value) = explode("=", $param);
-                $this->params[$key] = str_replace(['“','”'],'',$value);
-            }
+        private function parseInternal() {
+            $this->type = "Internal";                       // This is an internal request (executed by Frostybot)
+            $this->parseJsonOrInline($this->commandStr);    // Check if internal arguments are JSON or Inline format and parse accordingly
         }
 
         // Execute the command, and ensure that the necessary parameters have been given
         public function execute($output = false) {
-            $this->_parseParams();
-            //logger::debug($this->type." command issued: ".str_replace('__frostybot__:','',$this->params['stub'].':'.$this->params['command']).(isset($this->params['comment']) ? ' ('.$this->params['comment'].')' : ''));
-            $paramarr = [];
-            foreach ($this->params as $key => $value) {
-                if (!in_array($key, ['stub', 'command'])) {
-                    $paramarr[] = $key.'='.$value;
-                }
-            }
-            $GLOBALS['cmd'] = str_replace('__frostybot__:','',$this->params['stub'].':'.$this->params['command']).' '.implode(' ', $paramarr);
+            $this->parseParams();                                                                   // Parse parameters
             $GLOBALS['stub'] = str_replace('__frostybot__:','',$this->params['stub']);
-            logger::debug($this->type." command issued: ".$GLOBALS['cmd']);
             if (requiredParams($this->params,['stub','command']) !== false) {
                 $stub = strtolower($this->params['stub']);
                 $command = strtolower($this->params['command']);
-                if ($command == 'config') {                        // Don't load config if we are busy configuring it
+                if ($command == 'config') {                                                         // Don't load config if we are busy configuring it
                     $this->params['stub_update'] = $stub;
                     $stub = '__frostybot__';
                 }
-                $accounts = config::get();
-                if (($stub == '__frostybot__') || (in_array($command,['config','symbolmap'])) || (array_key_exists($stub, $accounts))) {
+                $accounts = config::get();                                                          // Get account config for supplied stub
+                if (($stub == '__frostybot__') || (in_array($command,['config','symbolmap'])) || (array_key_exists($stub, $accounts))) {    // This is an exchange command, load the exchange libraries
                     if (($stub !== '__frostybot__') && (!in_array($command,['config','symbolmap']))) {
-                        $config = $accounts[$stub];
-                        $symbolmap = (isset($config['symbolmap']) ? $config['symbolmap'] : []);
+                        $config = $accounts[$stub];                                                 // Load stub configuration
+                        $symbolmap = (isset($config['symbolmap']) ? $config['symbolmap'] : []);     // If no symbol supplied load the default mapping, or a custom mapping if configured
                         $defaultsymbol = (isset($symbolmap['default']) ? $symbolmap['default'] : null);
                         if (isset($this->params['symbol'])) {
                             $symbol = $this->params['symbol'];
@@ -191,7 +167,7 @@
                             $this->params['symbol'] = $defaultsymbol;
                         }
                         $GLOBALS['symbol'] = $this->params['symbol'];
-                        $this->exchange = new exchange($config['exchange'],$config['parameters']);
+                        $this->exchange = new exchange($config['exchange'],$config['parameters']);  // Initialize the exchange (CCXT, normalizers etc)
                     }
                     switch (strtoupper($command)) {
                         case 'CONFIG'       :   $result = config::manage($this->params);
@@ -221,7 +197,7 @@
                                                 break;
                         case 'MARKET'       :   $result = $this->exchange->market(requiredParams($this->params,['symbol']));
                                                 break;
-                        case 'MARKETS'      :   $result = $this->exchange->markets();
+                        case 'MARKETS'      :   $result = $this->exchange->markets(true, false);
                                                 break;
                         case 'OHLCV'        :   $result = $this->exchange->ohlCv(requiredParams($this->params,['symbol']));
                                                 break;

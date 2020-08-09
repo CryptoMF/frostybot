@@ -5,23 +5,30 @@
     class normalizer_deribit extends normalizer_base {
 
         public $orderSizing = 'quote';                  // Base or quote
-        //public $ccxtParams = [
-        //    'fetch_orders' => ['type'=>'any']
-        //];
-        public $cancelAllOrdersParams = [];
+
 
         // Get current balances
-        public function fetch_balance($data) {
-            $result = $data->result;
-            $currency = 'BTC';
-            $ticker = $this->ccxt->fetch_ticker('BTC-PERPETUAL');
-            $price = $ticker['ask'];
-            $balanceFree = $result['BTC']['free'];
-            $balanceUsed = $result['BTC']['used'];
-            $balanceTotal = $result['BTC']['total'];
+        public function fetch_balance() {
             $balances = [];
-            $balances['BTC'] = new balanceObject($currency,$price,$balanceFree,$balanceUsed,$balanceTotal);
+            foreach (['BTC','ETH'] as $currency) {
+                $result = $this->ccxt->fetch_balance(['currency' => $currency]);
+                $ticker = $this->ccxt->fetch_ticker($currency.'-PERPETUAL');
+                $price = $ticker['ask'];
+                $balanceFree = $result['info']['result']['available_funds'];
+                $balanceTotal = $result['info']['result']['equity'];
+                $balanceUsed = $balanceTotal - $balanceFree;
+                $balances[$currency] = new \frostybot\balanceObject($currency,$price,$balanceFree,$balanceUsed,$balanceTotal);
+            }
             return $balances;
+        }
+
+        public function cancel_all_orders($symbol, $params = []) {
+            $orders = $this->ccxt->fetch_open_orders($symbol = null);
+            $result = $this->ccxt->cancel_all_orders($symbol, $params);
+            if ((is_array($result)) && ($result['result'] == count($orders))) {
+                return $this->update_order_status($orders, 'cancelled');
+            }
+            return $orders;
         }
 
         // Get supported OHLCV timeframes
@@ -57,7 +64,7 @@
                     $low = $rawEntry->low;
                     $close = $rawEntry->close;
                     $volume = $rawEntry->volume;
-                    $ohlcv[] = new ohlcvObject($symbol,$timeframe,$timestamp,$open,$high,$low,$close,$volume,$rawEntry);
+                    $ohlcv[] = new \frostybot\ohlcvObject($symbol,$timeframe,$timestamp,$open,$high,$low,$close,$volume,$rawEntry);
                 }
             }
             return $ohlcv;
@@ -138,12 +145,12 @@
         */
 
         // Get list of markets from exchange
-        public function fetch_markets($data) {
-            $result = $data->result;
+        public function fetch_markets() {
+            $result = $this->ccxt->fetch_markets();
             $markets = [];
             foreach($result as $market) {
                 if (($market['type'] != 'option') && ($market['quote'] == 'USD') && ($market['active'] == true)) {
-                        $id = $market['symbol'];
+                    $id = $market['symbol'];
                     $symbol = $market['symbol'];
                     $quote = $market['quote'];
                     $base = $market['base'];
@@ -154,7 +161,7 @@
                     $contractSize = (isset($market['info']['contractSize']) ? $market['info']['contractSize'] : 1);
                     $precision = $market['precision'];
                     $marketRaw = $market;
-                    $markets[] = new marketObject($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$precision,$marketRaw);
+                    $markets[] = new \frostybot\marketObject($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$precision,$marketRaw);
                 }
             }
             return $markets;
@@ -176,7 +183,7 @@
                         $quoteSize = abs($positionRaw['size']);   
                         $entryPrice = $positionRaw['average_price'];
                         if (abs($baseSize) > 0) {
-                            $result[] = new positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
+                            $result[] = new \frostybot\positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
                         }
                     }
                 }
@@ -244,7 +251,7 @@
             $filledQuote = ($order['filled'] * $market->contract_size);
             $status = $order['status'] == 'canceled' ? 'cancelled' : ($order['status'] == 'untriggered' ? 'open' : $order['status']);
             $orderRaw = $order;
-            return new orderObject($market,$id,$timestamp,$type,$direction,$price,$trigger,$sizeBase,$sizeQuote,$filledBase,$filledQuote,$status,$orderRaw);
+            return new \frostybot\orderObject($market,$id,$timestamp,$type,$direction,$price,$trigger,$sizeBase,$sizeQuote,$filledBase,$filledQuote,$status,$orderRaw);
         }
 
     }

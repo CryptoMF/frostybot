@@ -9,8 +9,8 @@
         ];
 
         // Get current balances
-        public function fetch_balance($data) {
-            $result = $data->result;
+        public function fetch_balance() {
+            $result = $this->ccxt->fetch_balance();
             $currency = 'BTC';
             $ticker = $this->ccxt->fetch_ticker('BTC/USD');
             $price = $ticker['ask'];
@@ -18,7 +18,7 @@
             $balanceUsed = $result['BTC']['used'];
             $balanceTotal = $result['BTC']['total'];
             $balances = [];
-            $balances['BTC'] = new balanceObject($currency,$price,$balanceFree,$balanceUsed,$balanceTotal);
+            $balances['BTC'] = new \frostybot\balanceObject($currency,$price,$balanceFree,$balanceUsed,$balanceTotal);
             return $balances;
         }
 
@@ -61,7 +61,7 @@
                     $low = $rawEntry->low;
                     $close = $rawEntry->close;
                     $volume = $rawEntry->volume;
-                    $ohlcv[] = new ohlcvObject($symbol,$timeframe,$timestamp,$open,$high,$low,$close,$volume,$rawEntry);
+                    $ohlcv[] = new \frostybot\ohlcvObject($symbol,$timeframe,$timestamp,$open,$high,$low,$close,$volume,$rawEntry);
                 }
             }
             return $ohlcv;
@@ -98,8 +98,8 @@
         */
 
         // Get list of markets from exchange
-        public function fetch_markets($data) {
-            $result = $data->result;
+        public function fetch_markets() {
+            $result = $this->ccxt->fetch_markets();
             $markets = [];
             foreach($result as $market) {
                 if (($market['quote'] == 'USD') && ($market['active'] == true) && ($market['info']['typ'] == 'FFWCSX')) {
@@ -113,7 +113,7 @@
                     $contractSize = (isset($market['info']['contractSize']) ? $market['info']['contractSize'] : 1);
                     $precision = $market['precision'];
                     $marketRaw = $market;
-                    $markets[] = new marketObject($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$precision,$marketRaw);
+                    $markets[] = new \frostybot\marketObject($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$precision,$marketRaw);
                 }
             }
             return $markets;
@@ -130,7 +130,7 @@
                 $quoteSize = $positionRaw['currentQty'];
                 $entryPrice = $positionRaw['avgEntryPrice'];
                 if (abs($baseSize) > 0) {
-                    $result[] = new positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
+                    $result[] = new \frostybot\positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$positionRaw);
                 }
             }
             return $result;
@@ -193,9 +193,9 @@
             $sizeQuote = $order['amount'];
             $filledBase = $order['filled'] / $price;
             $filledQuote = $order['filled'];
-            $status = $order['status'];
+            $status = str_replace('canceled', 'cancelled', $order['status']);
             $orderRaw = $order;
-            return new orderObject($market,$id,$timestamp,$type,$direction,$price,$trigger,$sizeBase,$sizeQuote,$filledBase,$filledQuote,$status,$orderRaw);
+            return new \frostybot\orderObject($market,$id,$timestamp,$type,$direction,$price,$trigger,$sizeBase,$sizeQuote,$filledBase,$filledQuote,$status,$orderRaw);
         }     
 
     }

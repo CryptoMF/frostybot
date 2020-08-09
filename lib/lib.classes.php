@@ -1,5 +1,7 @@
 <?php
 
+    namespace frostybot;
+
     // Base Frostybot Object
 
     abstract class frostyObject {
@@ -62,7 +64,7 @@
             $this->low = $low;
             $this->close = $close;
             $this->volume = $volume;
-            $this->complete = ($timestamp < time('UCT'));
+            $this->complete = ($timestamp < strtotime('UCT'));
             //if (debug === true) {
             //    $this->raw = $raw;      
             //}
@@ -153,7 +155,7 @@
             $this->price_current = round($currentPrice,4);
             $this->value_entry = round(abs($this->price_entry * $baseSize),4);
             $this->value_current = round(abs($this->price_current * $baseSize),4);
-            $this->pnl = $this->value_current - $this->value_entry;
+            $this->pnl = round($this->value_current - $this->value_entry, 2);
             //if (debug === true) {
             //    $this->raw = $raw;     
             //}
@@ -228,7 +230,7 @@
         }
 
         private function save() {
-            $db = new DB();
+            $db = new \DB();
             $data = [
                 'modified'  => 'CURRENT_TIMESTAMP',
                 'id'        => $this->id,
@@ -238,16 +240,16 @@
                 'orders'    => json_encode($this->orders, JSON_PRETTY_PRINT),
             ];
             if ($db->insertOrUpdate('linkedorders', $data, ['id'=>$this->id])) {
-                logger::debug('Succesfully Saved linked order '.$this->id.' to the database');
+                \logger::debug('Succesfully Saved linked order '.$this->id.' to the database');
                 return true;
             } else {
-                logger::debug('Error saving linked order '.$this->id.' to the database');
+                \logger::debug('Error saving linked order '.$this->id.' to the database');
                 return true;
             }
         }
 
         private function retrieve() {
-            $db = new DB();
+            $db = new \DB();
             $result = $db->select('linkedorders', ['id'=>$this->id]);
             if (count($result) == 1) {
                 $row = $result[0];
@@ -259,5 +261,3 @@
         }
 
     }
-
-?>

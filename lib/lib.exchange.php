@@ -6,10 +6,8 @@
 
         private $ccxt;                          // CCXT class
         private $normalizer;                    // Normalizer class
-        private $settings = [                   // Default settings
-                    //'mode' => 'test',
-                ];
         private $exchange;
+        private $settings = [];                 // Default settings
         public $markets;
         public $marketsById;
         public $marketsBySymbol;
@@ -43,11 +41,12 @@
         // If a normalizer method by the same name exists, execute that too, passing all the CCXT data to the normalizer
         public function __call($name, $params) {
             $result = false;
-            if (method_exists($this->ccxt, $name)) {
-                $result = call_user_func([$this->ccxt, $name], $params);
-            }
             if (method_exists($this->normalizer, $name)) {
-                $result = call_user_func([$this->normalizer, $name], (object) ['params' => $params, 'result'=> $result, 'settings' => $this->settings]);
+                $result = call_user_func_array([$this->normalizer, $name], $params);
+            } else {
+                if (method_exists($this->ccxt, $name)) {
+                    $result = call_user_func_array([$this->ccxt, $name], $params);
+                }
             }
             return $result;
         }
@@ -102,7 +101,7 @@
         // Get market data for all markets
         public function markets($tickers = true, $cachetime = 5) {
             $key = $this->exchange.':markets';
-            if ($cacheResult = cache::get($key,$cachetime)) {
+            if ($cacheResult = cache::get($key, $cachetime)) {
                 return $cacheResult;
             } else {
                 $markets = $this->fetch_markets();
@@ -133,10 +132,10 @@
         }
 
         // Get position for specific symbol
-        public function position($params) {
+        public function position($params, $cachetime = 10) {
             $symbol = (is_array($params) ? $params['symbol'] : $params);
             $suppress = (isset($params['suppress']) ? $params['suppress'] : false);
-            $positions = $this->positions();
+            $positions = $this->positions($cachetime);
             foreach($positions as $position) {
                 if ($symbol == $position->market->symbol) {
                     return $position;
@@ -149,20 +148,30 @@
         }
 
         // Get current positions
-        public function positions() {
-            return $this->normalizer->fetch_positions();
+        public function positions($cachetime = 10) {
+            $key = requestuid().':positions';
+            if ($cacheResult = cache::get($key, $cachetime)) {
+                return $cacheResult;
+            } else {
+                $ret = $this->fetch_positions();
+                cache::set($key,$ret);
+                return $ret;
+            }
         }
 
         // Get order data for a specific order ID
         public function order($params) {
             if ($this->ccxt->has['fetchOrder']) {
-                $rawOrder = $this->ccxt->fetch_order($params['id'],$params['symbol']);
-                return $this->normalizer->parse_order($rawOrder);
-            }
-            $orders = $this->orders(['symbol' => $params['symbol']]);
-            foreach ($orders as $order) {
-                if ($order->id == $params['id']) {
-                    return $order;
+                $rawOrder = $this->fetch_order($params['id'],$params['symbol']);
+                if ($rawOrder !== false) {
+                    return $this->normalizer->parse_order($rawOrder);
+                }
+            } else {
+                $orders = $this->orders(['symbol' => $params['symbol']]);
+                foreach ($orders as $order) {
+                    if ($order->id == $params['id']) {
+                        return $order;
+                    }
                 }
             }
             logger::error('Invalid order or order not found');
@@ -213,10 +222,10 @@
                 $onlyOpen = false;
             }
             if (($onlyOpen) && ($this->ccxt->has['fetchOpenOrders'])) {
-                $rawOrders = $this->ccxt->fetch_open_orders($symbol, null, null, $fetchParams);
+                $rawOrders = $this->fetch_open_orders($symbol, null, null, $fetchParams);
             } else {
                 if ($this->ccxt->has['fetchOrders']) {
-                    $rawOrders = $this->ccxt->fetch_orders($symbol, null, null, $fetchParams);
+                    $rawOrders = $this->fetch_orders($symbol, null, null, $fetchParams);
                 } else {
                     $rawOrders = [];
                     if ($this->ccxt->has['fetchOpenOrders']) {
@@ -242,7 +251,7 @@
                 //$cancelParams = isset($this->normalizer->ccxtParams['cancel_orders']) ? $this->normalizer->ccxtParams['cancel_orders'] : [];
                 $results = [];
                 if ($this->ccxt->has['cancelAllOrders']) {
-                    $orders = $this->ccxt->cancel_all_orders($symbol);
+                    $orders = $this->cancel_all_orders($symbol);
                     if (is_array($orders)) {
                         foreach ($orders as $order) {
                             $results[] = $this->normalizer->parse_order($order);
@@ -260,7 +269,7 @@
                 }
                 return $results;
             } else {
-                $result = $this->normalizer->parse_order($this->ccxt->cancel_order($id, $symbol));
+                $result = $this->normalizer->parse_order($this->cancel_order($id, $symbol));
                 $balance = $this->total_balance_usd();
                 notifications::send('cancel', ['orders' => $result, 'balance' => $balance]);
                 return $result;
@@ -504,7 +513,7 @@
                     logger::warning('Profittrigger not supported when using relative size orders, ignoring...');
                     unset($params['profittrigger']);
                 }
-                logger::debug('Relative size parameter calculated as '.$size);
+                //logger::debug('Relative size parameter calculated as '.$size);
                 $requestedSize = $this->convert_size($size, $symbol, $price);       // Requested size in contracts
             }
             // ----------------------------------------------------------
@@ -530,7 +539,7 @@
                         }
                     }
                 }
-                logger::debug('Absolute size parameter calculated as '.$size);
+                //logger::debug('Absolute size parameter calculated as '.$size);
             }
             // ----------------------------------------------------------
 
@@ -553,7 +562,7 @@
                     if (is_a($orderResult,'linkedOrderObject')) {
                         $linkedOrder = $orderResult;
                     } else {
-                        $linkedOrder = new linkedOrderObject($stub, $symbol);
+                        $linkedOrder = new \frostybot\linkedOrderObject($stub, $symbol);
                         $linkedOrder->add($orderResult);
                     }
                     // Stop loss orders
@@ -726,7 +735,7 @@
         // Layered order
         private function layered_order($params) {
             $prices = $this->convert_price($params['symbol'], $params['price']);
-            $linkedOrder = new linkedOrderObject($params['stub'], $params['symbol']);
+            $linkedOrder = new \frostybot\linkedOrderObject($params['stub'], $params['symbol']);
             $amount = $params['amount'] / count($prices);
             foreach ($prices as $price) {
                 $params['amount'] = $amount;

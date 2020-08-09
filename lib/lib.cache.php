@@ -5,30 +5,48 @@
     const cachegcage = 5;                   // Delete cache files older than 5 days during garbage collection
     const cachegcpct = 20;                  // Garbage collection probability percentage
 
+
+    // Cache stats
+
+    $GLOBALS['cachestats'] = ['totals' => ['set' => 0, 'hit' => 0, 'miss' => 0]];
+
     // Cache handler
 
     class cache {
 
+
+        public static function statinc($key, $stat) {
+            if (!isset($GLOBALS['cachestats'][$key])) {
+                $GLOBALS['cachestats'][$key] = ['set' => 0, 'hit' => 0, 'miss' => 0];
+            }
+            $GLOBALS['cachestats']['totals'][$stat]++;
+            $GLOBALS['cachestats'][$key][$stat]++;
+        }
+
         public static function get($key,$timeout=false) {
             $keymd5 = md5($key);
-            $db = new db();
-            $query = ['key' => $keymd5];
-            $result = $db->select('cache', $query);
-            if (count($result) == 1) {
-                $row = $result[0];
-                $ts = $row->timestamp;
-                $perm = (bool) $row->permanent;
-                $data = json_decode($row->data);
-                $now = time();
-                $age = $now - $ts;
-                if (($age <= $timeout) || ($perm === true)) {
-                    logger::debug('Cache hit: '.$key. ' ('.$keymd5.')');
-                    return $data;
-                } else {
-                    $db->delete('cache',['key'=>$keymd5]);
-                }                
+            if ($timeout !== false) {
+                $db = new db();
+                $query = ['key' => $keymd5];
+                $result = $db->select('cache', $query);
+                if (count($result) == 1) {
+                    $row = $result[0];
+                    $ts = $row->timestamp;
+                    $perm = (bool) $row->permanent;
+                    $data = json_decode($row->data);
+                    $now = time();
+                    $age = $now - $ts;
+                    if (($age <= $timeout) || ($perm === true)) {
+                        //logger::debug('Cache hit: '.$key. ' ('.$keymd5.')');
+                        self::statinc($key,'hit');
+                        return $data;
+                    } else {
+                        $db->delete('cache',['key'=>$keymd5]);
+                    }                
+                }
             }
-            logger::debug('Cache miss: '.$key.' ('.$keymd5.')');
+            //logger::debug('Cache miss: '.$key.' ('.$keymd5.')');
+            self::statinc($key,'miss');
             return false;
         }
     
@@ -43,10 +61,12 @@
             ];
             $db->delete('cache',['key'=>$keymd5]);
             if ($db->insert('cache',$data)) {
-                logger::debug('Cache set: '.$key.' ('.$keymd5.')');
+                //logger::debug('Cache set: '.$key.' ('.$keymd5.')');
+                self::statinc($key,'set');
                 return true;
             }
-            logger::debug('Cache fail: '.$key.' ('.$keymd5.')');
+            //logger::debug('Cache fail: '.$key.' ('.$keymd5.')');
+            self::statinc($key,'fail');
             return false;
         }
     
