@@ -104,6 +104,7 @@
     // Check if supplied string is JSON
 
     function is_json($str) {
+        $str = (is_object($str) ? json_encode($str) : $str);
         json_decode($str);
         return (json_last_error() == JSON_ERROR_NONE);
     }

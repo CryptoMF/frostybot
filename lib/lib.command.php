@@ -67,11 +67,11 @@
             } else {
                 list($stub,$command) = explode(":", $commandStr);
             }
-            $this->params['stub'] = strtolower($stub);
-            $this->params['command'] = strtolower($command);
+            $this->params['stub'] = trim(strtolower($stub));
+            $this->params['command'] = trim(strtolower($command));
             unset($arr['command']);
             foreach($arr as $key => $value) {
-                $this->params[$key] = str_replace(['“','”'],'',$value);
+                $this->params[$key] = trim(str_replace(['“','”'],'',$value));
             }
             logger::debug('Parsing complete: '. $this->type.' request received in '.$this->format.' format');
         }
@@ -92,7 +92,7 @@
         // Parse JSON parameters (Exmaple: { 'command': 'ftx:close', 'symbol': 'BTC-PERP' })
         private function parseJson($arg) {
             $this->format = 'JSON';
-            $arr = json_decode($arg, true);
+            $arr = (is_object($arg) ? (array) $arg : json_decode($arg, true));
             if ((count($arr) == 1) && (isset($arr[0]))) {
                 $arr = $arr[0];
             }
