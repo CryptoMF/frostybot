@@ -240,7 +240,8 @@
                 'sllimit'   =>  'stop',
                 'slmarket'  =>  'stop',
                 'tplimit'   =>  'takeProfit', 
-                'tpmarket'  =>  'takeProfit'  
+                'tpmarket'  =>  'takeProfit',
+                'trailstop' =>  'trailingStop'  
             ];
             $result = [
                 'symbol'    => $params['symbol'],
@@ -258,6 +259,10 @@
                 if (substr($params['type'],0,2) == 'sl') {
                     $result['params']['orderPrice'] = isset($params['stopprice']) ? $params['stopprice'] : null;
                     $result['params']['triggerPrice'] = $params['stoptrigger'];
+                    $result['params']['reduceOnly'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
+                }
+                if ($params['type'] == 'trailstop') {
+                    $result['params']['trailValue'] = isset($params['trailby']) ? $params['trailby'] : null;
                     $result['params']['reduceOnly'] = (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) ? true : false;
                 }
                 if (substr($params['type'],0,2) == 'tp') {

@@ -18,7 +18,7 @@
         // Execute multiple commands if provided
         private function execMultiple($commandstr) {
             if (is_json($commandstr)) {
-                $commands = json_decode($commandstr, true);
+                $commands = json_decode($commandstr, false);
             } else {
                 $commands = explode("|", str_replace("\n","|",str_replace("\r","",trim($commandstr))));
             }
@@ -230,6 +230,8 @@
                         case 'STOPLOSS'     :   $result = $this->exchange->stoploss(requiredParams($this->params,['symbol','stoptrigger']));
                                                 break;
                         case 'TAKEPROFIT'   :   $result = $this->exchange->takeprofit(requiredParams($this->params,['symbol','profittrigger']));
+                                                break;
+                        case 'TRAILSTOP'    :   $result = $this->exchange->trailstop(requiredParams($this->params,['symbol','trailstop']));
                                                 break;
                         default             :   logger::error('Unknown command: '.$command);
                                                 $result = false;

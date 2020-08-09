@@ -591,6 +591,19 @@
                         $tpResult = $this->takeprofit($tpParams);
                         $linkedOrder->add($tpResult);
                     }
+                    // Trailing stop orders
+                    /*
+                    if (isset($params['trailstop'])) {
+                        $tsParams = [
+                            'symbol' => $symbol,
+                            'trailstop' => $params['trailstop'],
+                            'size' => $size,
+                            'reduce' => (isset($params['reduce']) ? $params['reduce'] : false)
+                        ];
+                        $tsResult = $this->trailingstop($tsParams);
+                        $linkedOrder->add($tsResult);
+                    }
+                    */
                     notifications::send('order', ['orders' => $linkedOrder, 'balance' => $balance]);
                     return $linkedOrder;
                 } else {
@@ -756,6 +769,28 @@
             return $parsedOrderResult;
         }
 
+        // Calculate the relative price in case the input contains +/- relative price or a percentage
+        private function get_relative_price($symbol, $price) {
+            $market = $this->market(['symbol' => $symbol]);
+            $operator = in_array(((string) $price)[0], ['+','-']) ? ((string) $price)[0] : '';
+            if ($operator != '') {
+                if (substr($price, -1) == '%') {                                   // Price expressed as a percentage of market price
+                    $variance = abs(str_replace('%','',$price));
+                    $price = $market->bid - ($market->bid * ((100 + $variance) / 100));
+                }                                   
+                switch ($operator) {
+                    case '+'        :   $price = abs($price);       // Price expressed in relation to market price (above price)
+                                        break;
+                    case '-'        :   $price = 0 - abs($price);   // Price expressed in relation to market price (below price)
+                                        break;
+                }
+                return round($price / $market->precision->price) * $market->precision->price;
+            } else {
+                logger::error('Relative price requires a + or - prefix');
+            }
+            return false;
+        }
+
         // Calculate the absolute price in case the input contains +/- relative price or a percentage
         private function get_absolute_price($symbol, $price) {
             $market = $this->market(['symbol' => $symbol]);
@@ -837,6 +872,42 @@
             }
             if (!($params['amount'] > 0)) {
                 logger::error("Could not automatically determine the size of the take profit order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
+            }
+            $result = $this->submit_order($params);
+            $balance = $this->total_balance_usd();
+            notifications::send('order', ['orders' => $result, 'balance' => $balance]);
+            return $result;
+        }
+
+
+        // Trailing stop (not supported on all exchanges)
+        // Buy or Sell is automatically determined by trailstop being positive or negative (Position = buy, Negative = sell)
+        public function trailstop($params) {
+            if ($this->ccxt->id != 'ftx') {
+                logger::error('Trailing stop is currently only supported on FTX');
+            }
+            $symbol = $params['symbol'];
+            $market = $this->normalizer->get_market_by_symbol($symbol);
+            $trailby = $this->get_relative_price($symbol, $params['trailstop']);
+            if (isset($params['size'])) {
+              $params['size'] = $this->get_absolute_size($params['size']);
+            }
+            if (isset($params['entryprice'])) {
+                if ($this->normalizer->orderSizing == 'quote') {
+                    $params['size'] = ($params['size'] / $params['entryprice']) * $price;
+                } else {
+                    $price = $params['entryprice'];
+                }
+            }
+            $params['type'] = 'trailstop';
+            $params['side'] = $trailby  > 0 ? 'buy' : ($trailby < 0 ? 'sell' : null);
+            $params['amount'] = isset($params['size']) ? $this->convert_size($params['size'], $symbol, $price) : $this->position_size_contracts($params['symbol']);    // Use current position size is no size is provided
+            $params['trailby'] = $trailby;
+            if (is_null($params['side'])) {                 
+                logger::error('Could not determine direction of the trailing stop order because the trail distance is zero.');
+            }
+            if (!($params['amount'] > 0)) {
+                logger::error("Could not automatically determine the size of the trailing stop order (perhaps you don't currently have any open positions). Please try again and provide the 'size' parameter.");
             }
             $result = $this->submit_order($params);
             $balance = $this->total_balance_usd();
