@@ -171,6 +171,7 @@
                             $this->params['symbol'] = $defaultsymbol;
                         }
                         $GLOBALS['symbol'] = $this->params['symbol'];
+                        $GLOBALS['command'] = $command;
                         $this->exchange = new exchange($config['exchange'],$config['parameters']);  // Initialize the exchange (CCXT, normalizers etc)
                     }
                     switch (strtoupper($command)) {
@@ -225,13 +226,13 @@
                                                 break;
                         case 'SELL'         :   $result = $this->exchange->sell(requiredParams($this->params,['symbol', 'size']));
                                                 break;
-                        case 'CLOSE'        :   $result = $this->exchange->close(requiredParams($this->params,['symbol']), true);
+                        case 'CLOSE'        :   $result = $this->exchange->close(requiredParams($this->params,['symbol']));
                                                 break;
-                        case 'STOPLOSS'     :   $result = $this->exchange->stoploss(requiredParams($this->params,['symbol','stoptrigger']), true);
+                        case 'STOPLOSS'     :   $result = $this->exchange->stoploss(requiredParams($this->params,['symbol','stoptrigger']));
                                                 break;
-                        case 'TAKEPROFIT'   :   $result = $this->exchange->takeprofit(requiredParams($this->params,['symbol','profittrigger']), true);
+                        case 'TAKEPROFIT'   :   $result = $this->exchange->takeprofit(requiredParams($this->params,['symbol','profittrigger']));
                                                 break;
-                        case 'TRAILSTOP'    :   $result = $this->exchange->trailstop(requiredParams($this->params,['symbol','trailstop']), true);
+                        case 'TRAILSTOP'    :   $result = $this->exchange->trailstop(requiredParams($this->params,['symbol','trailstop']));
                                                 break;
                         default             :   logger::error('Unknown command: '.$command);
                                                 $result = false;

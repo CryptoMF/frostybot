@@ -43,9 +43,14 @@
             $cachetotal = $cachehits + $cachemisses;
             $cachehitratio = ($cachetotal > 0 ? round(($cachehits / $cachetotal) * 100, 0) : 0);
             logger::debug('Cache Stats: '.$cachemisses.' Misses, '.$cachehits.' Hits, '.$cachehitratio.'% Hit Ratio');
+            $results = $this->getResults();
+            $messages = $this->getMessages();
+            if (($results->code == 0) && (in_array( strtolower($GLOBALS['command']), ['long', 'short', 'buy', 'sell', 'stoploss', 'takeprofit', 'trailstop', 'close', 'cancel', 'cancelall'] ))) {
+                notifications::send('order', ['orders' => $results->data, 'balance' => $GLOBALS['balance']]);
+            }
             $output = (object) [
-                'results' => $this->getResults(),
-                'messages' => $this->getMessages(),
+                'results' => $results,
+                'messages' => $messages,
             ];
             echo json_encode($output, JSON_PRETTY_PRINT).PHP_EOL;
             die;

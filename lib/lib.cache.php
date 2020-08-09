@@ -59,8 +59,7 @@
                 'timestamp' => time(),
                 'data' => json_encode($data,JSON_PRETTY_PRINT),
             ];
-            $db->delete('cache',['key'=>$keymd5]);
-            if ($db->insert('cache',$data)) {
+            if ($db->insertorupdate('cache',$data, ['key'=> $keymd5])) {
                 //logger::debug('Cache set: '.$key.' ('.$keymd5.')');
                 self::statinc($key,'set');
                 return true;
