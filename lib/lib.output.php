@@ -39,8 +39,9 @@
             $cachestats = $GLOBALS['cachestats']['totals'];
             $cachehits = $cachestats['hit'];
             $cachemisses = $cachestats['miss'];
-            $cachehitratio = round(($cachehits / ($cachehits + $cachemisses)) * 100, 0);
-            logger::debug('Cache Stats: '.$cachestats['miss'].' Misses, '.$cachestats['hit'].' Hits, '.$cachehitratio.'% Hit Ratio');
+            $cachetotal = $cachehits + $cachemisses;
+            $cachehitratio = ($cachetotal > 0 ? round(($cachehits / $cachetotal) * 100, 0) : 0);
+            logger::debug('Cache Stats: '.$cachemisses.' Misses, '.$cachehits.' Hits, '.$cachehitratio.'% Hit Ratio');
             $output = (object) [
                 'results' => $this->getResults(),
                 'messages' => $this->getMessages(),
