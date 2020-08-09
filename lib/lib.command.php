@@ -22,7 +22,7 @@
             } else {
                 $commands = explode("|", str_replace("\n","|",trim($commandstr)));
             }
-            if ((is_array($commands)) && (count($commands) > 1)) {
+            if ((is_array($commands)) && (count($commands) >= 1)) {
                 $overallResult = true;
                 $allResults = [];
                 foreach ($commands as $command) {
@@ -60,7 +60,7 @@
 
         // Parse parameter array
         private function parseArray($arr) {
-            $commandStr = $arr['command'];
+            $commandStr = (isset($arr['command']) ? $arr['command'] : '');
             if(strpos($commandStr,':') === false) {
                 $stub = "__frostybot__";
                 $command = $commandStr;
