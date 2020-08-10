@@ -173,6 +173,7 @@
         // Get order symbol
         private static function ordersymbol($params = null) {
             if (self::noorders($params)) { return $GLOBALS['symbol']; }
+            $symbol = null;
             if ((is_object($params)) && (get_class($params) == 'frostybot\orderObject')) {
                 $symbol = $params->market->symbol;
             }
@@ -182,7 +183,7 @@
             if ((is_array($params)) && (get_class($params[0]) == 'frostybot\orderObject')) {       // Array of orders
                 $symbol = $params[0]->market->symbol;
             }
-            return $symbol;
+            return (is_null($symbol) ? $GLOBALS['symbol'] : $symbol);
         }
 
         // Parse order

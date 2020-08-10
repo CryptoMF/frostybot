@@ -24,7 +24,7 @@
         }
 
         public static function get($key,$timeout=false) {
-            $keymd5 = md5($key);
+            $keymd5 = strtolower(md5($key));
             if ($timeout !== false) {
                 $db = new db();
                 $query = ['key' => $keymd5];
@@ -52,7 +52,7 @@
     
         public static function set($key,$data,$permanent=false) {
             $db = new db();
-            $keymd5 = md5($key);
+            $keymd5 = strtolower(md5($key));
             $data = [
                 'key' => $keymd5,
                 'permanent' => ($permanent === true ? '1' : '0'),
