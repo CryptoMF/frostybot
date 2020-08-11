@@ -45,6 +45,8 @@
             logger::debug('Cache Stats: '.$cachemisses.' Misses, '.$cachehits.' Hits, '.$cachehitratio.'% Hit Ratio');
             $results = $this->getResults();
             $messages = $this->getMessages();
+            $command = $GLOBALS['command'];
+            $command = (((is_object($command)) && (isset($command->command))) ? $command->command : $command); 
             if (($results->code == 0) && (in_array( strtolower($command), ['long', 'short', 'buy', 'sell', 'stoploss', 'takeprofit', 'trailstop', 'close'] ))) {
                 notifications::send('order', ['orders' => $results->data, 'balance' => $GLOBALS['balance']]);
             }
