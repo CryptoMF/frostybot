@@ -86,7 +86,7 @@
                 $collist[] = $key;
                 $vallist[] = $value;
             }
-            $sql = "INSERT INTO `".$table."` (`".implode("`,`", $collist)."`) VALUES ('".implode("','", $vallist)."');";
+            $sql = "INSERT OR REPLACE INTO `".$table."` (`".implode("`,`", $collist)."`) VALUES ('".implode("','", $vallist)."');";
             $sql = str_replace("'CURRENT_TIMESTAMP'","CURRENT_TIMESTAMP", $sql);
             //logger::debug($sql);
             return $this->exec($sql);
