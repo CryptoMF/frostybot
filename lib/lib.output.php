@@ -47,10 +47,10 @@
             $messages = $this->getMessages();
             $command = $GLOBALS['command'];
             $command = (((is_object($command)) && (isset($command->command))) ? $command->command : $command); 
-            if (($results->code == 0) && (in_array( strtolower($command), ['long', 'short', 'buy', 'sell', 'stoploss', 'takeprofit', 'trailstop', 'close'] ))) {
+            if (($results->code == 0) && (!is_object($command)) && (in_array( strtolower($command), ['long', 'short', 'buy', 'sell', 'stoploss', 'takeprofit', 'trailstop', 'close'] ))) {
                 notifications::send('order', ['orders' => $results->data, 'balance' => $GLOBALS['balance']]);
             }
-            if (($results->code == 0) && (in_array( strtolower($command), ['cancel', 'cancelall'] ))) {
+            if (($results->code == 0) && (!is_object($command)) && (in_array( strtolower($command), ['cancel', 'cancelall'] ))) {
                 notifications::send('cancel', ['orders' => $results->data, 'balance' => $GLOBALS['balance']]);
             }
             $output = (object) [
