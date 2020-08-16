@@ -492,7 +492,6 @@
                     } else {
                         if ($resultSize > $maxSize) {
                             $size = ($operator == '-' ? $size + ($resultSize  - $maxSize) : $maxSize - $positionSizeUsd);
-                            echo $size.PHP_EOL;
                             logger::debug('Position size limit: '.$maxSize.", Resultant position size: ".$resultSize.", Adjusted size: ".$size);
                             if ($size < 0) {
                                 $size = abs($size);
@@ -518,7 +517,6 @@
                 }
                 //logger::debug('Relative size parameter calculated as '.$size);
                 $requestedSize = $this->convert_size($size, $symbol, $price);       // Requested size in contracts
-                return true;
             }
             // ----------------------------------------------------------
 
