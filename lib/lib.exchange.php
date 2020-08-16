@@ -487,19 +487,24 @@
                 }
                 if ((!is_null($maxSize)) && ($size > 0))  {
                     $resultSize = $positionSizeUsd + ($operator == '-' ? 0 - $size : $size);
-                    if ($resultSize > $maxSize) {
-                        $size = ($operator == '-' ? $size + ($resultSize  - $maxSize) : $maxSize - $positionSizeUsd);
-                        logger::debug('Position size limit: '.$maxSize.", Resultant position size: ".$resultSize.", Adjusted size: ".$size);
-                        if ($size < 0) {
-                            $size = abs($size);
-                            $operator = '-';
-                            //$size = 0;
-                        }
-                        if ($size > 0) {
-                            logger::warning('Order size would exceed maximum position size, adjusting order size to '.$size.'.');
-                        }
-                        if (round($size) == 0) {
-                            logger::error('Maximum position size reached, order not permitted.');
+                    if (abs($positionSizeUsd) >= abs($maxSize)) {
+                        logger::error('Maximum position size reached, order not permitted.');
+                    } else {
+                        if ($resultSize > $maxSize) {
+                            $size = ($operator == '-' ? $size + ($resultSize  - $maxSize) : $maxSize - $positionSizeUsd);
+                            echo $size.PHP_EOL;
+                            logger::debug('Position size limit: '.$maxSize.", Resultant position size: ".$resultSize.", Adjusted size: ".$size);
+                            if ($size < 0) {
+                                $size = abs($size);
+                                $operator = '-';
+                                //$size = 0;
+                            }
+                            if ($size > 0) {
+                                logger::warning('Order size would exceed maximum position size, adjusting order size to '.$size.'.');
+                            }
+                            if (round($size) == 0) {
+                                logger::error('Maximum position size reached, order not permitted.');
+                            }
                         }
                     }
                 }
@@ -513,9 +518,9 @@
                 }
                 //logger::debug('Relative size parameter calculated as '.$size);
                 $requestedSize = $this->convert_size($size, $symbol, $price);       // Requested size in contracts
+                return true;
             }
             // ----------------------------------------------------------
-
 
             // ----------------------------------------------------------
             // Absolute trade size provided (size=xxx or size=xxx)
