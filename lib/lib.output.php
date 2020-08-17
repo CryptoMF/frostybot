@@ -1,6 +1,7 @@
 <?php
 
     header('Content-Type: application/json');
+    header('Access-Control-Allow-Origin: *');
     set_time_limit(0);
     ignore_user_abort(true);
     ob_start();
