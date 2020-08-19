@@ -137,6 +137,9 @@
             $direction = (strtolower($order['side']) == 'buy' ? 'long' : 'short');
             $trigger = ($order['info']['stopPrice'] != 0 ? $order['info']['stopPrice'] : null);
             $price = (isset($order['price']) ? $order['price'] : (!is_null($trigger) ? $trigger : null));
+            if ((strtolower($type) == 'market') || ($price == null)) {
+                $price = $direction == 'buy' ? $market->ask : $market->bid;
+            }
             $sizeBase = $order['amount'];
             $sizeQuote = $order['amount'] * $price;
             $filledBase = $order['filled'];
