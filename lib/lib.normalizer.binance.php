@@ -29,7 +29,11 @@
 
         // Get list of markets from exchange
         public function fetch_markets() {
-            $tickers = $this->ccxt->fetch_tickers();
+            $tickersRaw = $this->ccxt->fapiPublic_get_ticker_bookticker();
+            $tickers = [];
+            foreach ($tickersRaw as $tickerRaw) {
+                $tickers[$tickerRaw['symbol']] = $tickerRaw;
+            }
             $result = $this->ccxt->fetch_markets();
             $markets = [];
             foreach($result as $market) {
@@ -40,8 +44,8 @@
                     $base = $market['base'];
                     $expiration = null;
                     //$expiration = (isset($market['info']['expiration']) ? $market['info']['expiration'] : null);
-                    $bid = (isset($tickers[$symbol]) ? $tickers[$symbol]['bid'] : null);
-                    $ask = (isset($tickers[$symbol]) ? $tickers[$symbol]['ask'] : null);
+                    $bid = (isset($tickers[$id]) ? (float) $tickers[$id]['bidPrice'] : null);
+                    $ask = (isset($tickers[$id]) ? (float) $tickers[$id]['askPrice'] : null);
                     $contractSize = 1;
                     $precision = [
                         'amount' => $market['limits']['amount']['min'],
