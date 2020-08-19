@@ -58,6 +58,16 @@
             return $markets;
         }
 
+        // Cancel all open orders
+        public function cancel_all_orders($symbol, $params = []) {
+            $orders = $this->ccxt->fetch_open_orders($symbol, $params);
+            $result = @$this->ccxt->cancel_all_orders($symbol, $params);
+            if ($result['code'] == 200) {
+                return $orders;
+            }
+            return false;
+        }
+
         // Get list of positions from exchange
         public function fetch_positions() {
             $positionsRaw = @$this->ccxt->fapiPrivate_get_positionrisk();
@@ -136,7 +146,42 @@
             return new \frostybot\orderObject($market,$id,$timestamp,$type,$direction,$price,$trigger,$sizeBase,$sizeQuote,$filledBase,$filledQuote,$status,$orderRaw);
         }     
 
-    }
+        // Get supported OHLCV timeframes
+        public function fetch_timeframes() {
+            return [
+                "1"     => "1m",
+                "3"     => "3m",
+                "5"     => "5m",
+                "15"    => "15m",
+                "30"    => "30m",
+                "60"    => "1h",
+                "120"   => "2h",
+                "240"   => "4h",
+                "360"   => "6h",
+                "480"   => "8h",
+                "720"   => "12h",
+                "1440"  => "1d",
+                "4320"  => "3d",
+                "10080" => "1w"
+            ];
+        }
 
+        // Get OHLCV data
+        public function fetch_ohlcv($symbol, $timeframe, $count=100) {
+            $tfs = $this->fetch_timeframes();
+            $actualtf = $tfs[$timeframe];
+            $rawOHLCV = $this->ccxt->fetch_ohlcv($symbol, $actualtf, null, $count);
+            $ohlcv = [];
+            foreach ($rawOHLCV as $rawEntry) {
+                list($ts, $open, $high, $low, $close, $volume) = $rawEntry;
+                $timestamp = (float) $ts / 1000;
+                $ohlcv[] = new \frostybot\ohlcvObject($symbol,$timeframe,$timestamp,$open,$high,$low,$close,$volume,$rawEntry);
+            }
+            return $ohlcv;
+        }        
+
+
+    }
+    
 
 ?>
