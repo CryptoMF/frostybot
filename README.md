@@ -36,6 +36,7 @@ Currently Bitmex, Deribit and FTX exchanges are supported for perpetual and futu
 * **Bitmex:**  BTC/USD and ETH/USD
 * **Deribit:** BTC-PERPETUAL and ETH-PERPETUAL
 * **FTX:** BTC-PERP and ETH-PERP
+* **Binance Futures:** BTC/USDT and ETH/USDT
 
 We will add more exchanges based on user demand. Keeping the code cross-compatible over all the exchanges is quite complex so we will only consider adding additional exchanges if a significant number of users request it. Bear in mind that this software is free, so we are under no obligation to add features or provide support, but we will endevour to help out when and where we can. Support can also be found in the [FrostyBot Discord Server](https://discord.gg/yK4U93s). There are a lot of very knowlegeable guys willing to help out if you need assistance.
 
