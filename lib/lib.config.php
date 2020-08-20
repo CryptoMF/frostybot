@@ -35,6 +35,11 @@
 
         // Add or update accounts
         public static function manage($params) {
+            $db = new db();
+            $db->insertOrUpdate('exchanges',['exchange'=>'ftx','description'=>'FTX'],['exchange'=>'ftx']);
+            $db->insertOrUpdate('exchanges',['exchange'=>'bitmex','description'=>'Bitmex'],['exchange'=>'bitmex']);
+            $db->insertOrUpdate('exchanges',['exchange'=>'deribit','description'=>'Deribit'],['exchange'=>'deribit']);
+            $db->insertOrUpdate('exchanges',['exchange'=>'binance','description'=>'Binance'],['exchange'=>'binance']);
             if ($params['stub_update'] == '__frostybot__') {
                 return self::censor(self::get());
             }
@@ -53,8 +58,8 @@
                 $data['parameters'][$field] = (isset($params[$field]) ? $params[$field] : (isset($data['parameters'][$field]) ? $data['parameters'][$field] : null));
             }
             if (isset($data['exchange'])) {
-                if (!in_array(strtolower($data['exchange']), ['deribit','ftx','bitmex'])) {
-                    logger::error('Exchange not supported: '.$data['exchange'].' (only Deribit, Bitmex and FTX are supported)');
+                if (!in_array(strtolower($data['exchange']), ['deribit','ftx','bitmex','binance'])) {
+                    logger::error('Exchange not supported: '.$data['exchange'].' (only Deribit, Bitmex, Binance and FTX are supported)');
                 }
             }
             if ((isset($params['testnet'])) && (isset($params['exchange']))) {
@@ -69,6 +74,17 @@
                 }
                 $data['parameters']['headers']['FTX-SUBACCOUNT'] = $params['subaccount'];  // Required when using sub accounts on FTX
             }
+            if ($data['exchange'] == 'binance') {
+                if (isset($params['type'])) {
+                    if (in_array(strtolower($params['type']), ['spot', 'future', 'futures', 'margin'])) {
+                        $data['parameters']['options'] = ['defaultType' => str_replace('futures','future',strtolower($params['type']))];
+                    } else {
+                        logger::error('Invalid type parameter. Should be "spot", "futures" or "margin"');
+                    }
+                } else {
+                    $data['parameters']['options'] = ['defaultType' => 'future'];
+                }
+            } 
             if (is_null($data['parameters']['urls'])) {
                 unset($data['parameters']['urls']);
             }

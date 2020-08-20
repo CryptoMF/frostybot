@@ -816,7 +816,7 @@
         public function stoploss($params) {
             $symbol = $params['symbol'];
             $trigger = $this->get_absolute_price($symbol, $params['stoptrigger']);
-            $price = isset($params['stopprice']) ? $params['stopprice'] : $trigger;
+            $price = isset($params['stopprice']) ? $this->get_absolute_price($symbol, $params['stopprice']) : $trigger;
             $market = $this->normalizer->get_market_by_symbol($symbol);
             if (isset($params['size'])) {
               $params['size'] = $this->get_absolute_size($params['size']);
@@ -827,6 +827,9 @@
                 } else {
                     $price = $params['entryprice'];
                 }
+            }
+            if (isset($params['stopprice'])) {
+                $params['stopprice'] = $this->get_absolute_price($symbol, $params['stopprice']);
             }
             $params['type'] = isset($params['stopprice']) ? 'sllimit' : 'slmarket';
             $params['side'] = $trigger  > $market->ask ? 'buy' : ($trigger < $market->bid ? 'sell' : null);
@@ -849,7 +852,7 @@
         public function takeprofit($params) {
             $symbol = $params['symbol'];
             $trigger = $this->get_absolute_price($symbol, $params['profittrigger']);
-            $price = isset($params['profitprice']) ? $params['profitprice'] : $trigger;
+            $price = isset($params['profitprice']) ? $this->get_absolute_price($symbol, $params['profitprice']) : $trigger;
             $market = $this->normalizer->get_market_by_symbol($symbol);
             if (isset($params['entryprice'])) {
                 if ($this->normalizer->orderSizing == 'quote') {
@@ -857,6 +860,9 @@
                 } else {
                     $price = $params['entryprice'];
                 }
+            }
+            if (isset($params['profitprice'])) {
+                $params['profitprice'] = $this->get_absolute_price($symbol, $params['profitprice']);
             }
             $params['type'] = isset($params['profitprice']) ? 'tplimit' : 'tpmarket';
             $params['side'] = $trigger  > $market->ask ? 'sell' : ($trigger < $market->bid ? 'buy' : null);
@@ -937,6 +943,7 @@
                     $GLOBALS['balance'] = $balance;
                     $comment = isset($params['comment']) ? $params['comment'] : 'None';
                     logger::info('TRADE:CLOSE | Symbol: '.$symbol.' | Direction: '.$side.' | Type: '.$type.' | Size: '.($requestedSize * $market->contract_size).' | Price: '.(is_null($price) ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
+                    cache::flush(0);
                     return $orderResult;
                 }
             } else {
