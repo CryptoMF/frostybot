@@ -8,8 +8,38 @@
         public $ccxtParams = [
         ];
 
-        // Get current balances
-        public function fetch_balance() {
+        // Get balance on Spot Exchange
+        private function fetch_balance_spot() {
+            $tickersRaw = $this->ccxt->v3_get_ticker_bookticker();
+            $tickers = [];
+            foreach ($tickersRaw as $tickerRaw) {
+                $tickers[$tickerRaw['symbol']] = $tickerRaw;
+            }
+            $result = @$this->ccxt->fetch_balance();  // Had to kill the output because CCXT throws some errors
+            unset($result['info']);
+            unset($result['free']);
+            unset($result['used']);
+            unset($result['total']);
+            $balances = [];
+            foreach ($result as $currency => $balance) {
+                if (in_array($currency, ['USDT','BUSD'])) {
+                    $price = 1;
+                } else {
+                    $ticker = $tickers[$currency.'USDT'];
+                    $price = $ticker['askPrice'];    
+                }
+                $balanceFree = $balance['free'];
+                $balanceUsed = $balance['used'];
+                $balanceTotal = $balance['total'];
+                if ($balanceTotal > 0) {
+                    $balances[$currency] = new \frostybot\balanceObject($currency,$price,$balanceFree,$balanceUsed,$balanceTotal);
+                }
+            }
+            return $balances;
+        }
+
+        // Get balance on Future Exchange
+        private function fetch_balance_futures() {
             $result = @$this->ccxt->fetch_balance();  // Had to kill the output because CCXT throws some errors
             foreach ($result['info']['assets'] as $asset) {
                 $currency = $asset['asset'];
@@ -27,8 +57,49 @@
             return $balances;
         }
 
-        // Get list of markets from exchange
-        public function fetch_markets() {
+
+        // Get current balances
+        public function fetch_balance() {
+            $exchange = $this->ccxt->options['defaultType'];
+            switch ($exchange) {
+                case 'spot'     :   return $this->fetch_balance_spot();
+                case 'future'   :   return $this->fetch_balance_futures();
+            }
+        }
+
+        // Get list of markets from Spot Exchange
+        private function fetch_markets_spot() {
+            $tickersRaw = $this->ccxt->v3_get_ticker_bookticker();
+            $tickers = [];
+            foreach ($tickersRaw as $tickerRaw) {
+                $tickers[$tickerRaw['symbol']] = $tickerRaw;
+            }
+            $result = $this->ccxt->fetch_markets();
+            $markets = [];
+            foreach($result as $market) {
+                if ((in_array($market['quote'], ['USDT', 'BUSD', 'USD'])) && ($market['active'] == true)) {
+                    $id = $market['id'];
+                    $symbol = $market['symbol'];
+                    $quote = $market['quote'];
+                    $base = $market['base'];
+                    $expiration = null;
+                    //$expiration = (isset($market['info']['expiration']) ? $market['info']['expiration'] : null);
+                    $bid = (isset($tickers[$id]) ? (float) $tickers[$id]['bidPrice'] : null);
+                    $ask = (isset($tickers[$id]) ? (float) $tickers[$id]['askPrice'] : null);
+                    $contractSize = 1;
+                    $precision = [
+                        'amount' => $market['limits']['amount']['min'],
+                        'price' => $market['limits']['price']['min']
+                    ];
+                    $marketRaw = $market;
+                    $markets[] = new \frostybot\marketObject($id,$symbol,$base,$quote,$expiration,$bid,$ask,$contractSize,$precision,$marketRaw);
+                }
+            }
+            return $markets;
+        }        
+
+        // Get list of markets from Futures Exchange
+        private function fetch_markets_futures() {
             $tickersRaw = $this->ccxt->fapiPublic_get_ticker_bookticker();
             $tickers = [];
             foreach ($tickersRaw as $tickerRaw) {
@@ -58,9 +129,23 @@
             return $markets;
         }
 
-        // Cancel all open orders
-        public function cancel_all_orders($symbol, $params = []) {
-            $orders = $this->ccxt->fetch_open_orders($symbol, $params);
+        // Get list of markets
+        public function fetch_markets() {
+            $exchange = $this->ccxt->options['defaultType'];
+            switch ($exchange) {
+                case 'spot'     :   return $this->fetch_markets_spot();
+                case 'future'   :   return $this->fetch_markets_futures();
+            }
+        }
+
+        // Cancel all orders of the Spot Exchange
+        private function cancel_all_orders_spot($symbol, $params) {
+            return @$this->ccxt->cancel_all_orders($symbol);
+        }
+        
+        // Cancel all orders on the Futures Exchange
+        private function cancel_all_orders_futures($symbol, $params) {
+            $orders = $this->ccxt->fetch_open_orders($symbol);
             $result = @$this->ccxt->cancel_all_orders($symbol, $params);
             if ($result['code'] == 200) {
                 return $orders;
@@ -68,8 +153,37 @@
             return false;
         }
 
-        // Get list of positions from exchange
-        public function fetch_positions() {
+        // Cancel all open orders
+        public function cancel_all_orders($symbol, $params = []) {
+            $exchange = $this->ccxt->options['defaultType'];
+            switch ($exchange) {
+                case 'spot'     :   return $this->cancel_all_orders_spot($symbol, $params);
+                case 'future'   :   return $this->cancel_all_orders_futures($symbol, $params);
+            }
+        }
+
+        // Get list of positions from Spot Exchange
+        // Note: Since a spot exchange does not have the concept of "positions", positions are emulated from current balances of assets against USDT
+        private function fetch_positions_spot() {
+            $balances = $this->fetch_balance_spot();
+            $result = [];
+            foreach ($balances as $currency => $balance) {
+                if (!in_array($currency, ['BUSD','USDT'])) {
+                    $market = $this->marketsById[$currency.'USDT'];
+                    $direction = 'long';
+                    $baseSize = $balance->balance_cur_total;
+                    $quoteSize = $balance->balance_usd_total;
+                    $entryPrice = $balance->price;
+                    if (abs($baseSize) > 0) {
+                        $result[] = new \frostybot\positionObject($market,$direction,$baseSize,$quoteSize,$entryPrice,$balance);
+                    }
+                }
+            }
+            return $result;
+        }
+
+        // Get list of positions from Futures Exchange
+        private function fetch_positions_futures() {
             $positionsRaw = @$this->ccxt->fapiPrivate_get_positionrisk();
             $result = [];
             foreach ($positionsRaw as $positionRaw) {
@@ -85,8 +199,53 @@
             return $result;
         }
 
-        // Create parameters for order
-        public function order_params($params) {
+        // Get list of positions
+        public function fetch_positions() {
+            $exchange = $this->ccxt->options['defaultType'];
+            switch ($exchange) {
+                case 'spot'     :   return $this->fetch_positions_spot();
+                case 'future'   :   return $this->fetch_positions_futures();
+            }
+        }
+
+        // Create parameters for orders on the Spot Exchange
+        private function order_params_spot($params) {
+            $typeMap = [
+                'limit'     =>  'LIMIT',
+                'market'    =>  'MARKET',
+                'sllimit'   =>  'STOP_LOSS_LIMIT',
+                'slmarket'  =>  'STOP_LOSS_LIMIT',    // Market stops are not supported by the Binance Spot API, even through their documentation says it is
+                'tplimit'   =>  'TAKE_PROFIT_LIMIT', 
+                'tpmarket'  =>  'TAKE_PROFIT',
+            ];
+            $result = [
+                'symbol'    => $params['symbol'],
+                'type'      => $typeMap[$params['type']],
+                'side'      => $params['side'],
+                'amount'    => $params['amount'],
+                'price'     => isset($params['price']) ? $params['price'] : null,
+                'params'    => []
+            ];
+            if (!in_array($params['type'],['limit','market'])) {
+                $result['type']   =  $typeMap[$params['type']];
+                $result['params'] = [];
+                if (substr($params['type'],0,2) == 'sl') {
+                    $result['price'] = isset($params['stopprice']) ? $params['stopprice'] : $params['stoptrigger'];
+                    $result['params']['stopPrice'] = $params['stoptrigger'];
+                }
+                if (substr($params['type'],0,2) == 'tp') {
+                    $result['price'] = isset($params['profitprice']) ? $params['profitprice'] : null;
+                    $result['params']['stopPrice'] = $params['profittrigger'];
+                }
+                if (isset($params['reduce']) && (strtolower($params['reduce']) == "true")) {
+                    $result['params']['reduceOnly'] = (string) "true";
+                }
+            }
+            return $result;
+        }
+
+        // Create parameters for orders on the Futures Exchange
+        private function order_params_futures($params) {
             $typeMap = [
                 'limit'     =>  'LIMIT',
                 'market'    =>  'MARKET',
@@ -125,6 +284,15 @@
             return $result;
         }
 
+        // Create parameters for order
+        public function order_params($params) {
+            $exchange = $this->ccxt->options['defaultType'];
+            switch ($exchange) {
+                case 'spot'     :   return $this->order_params_spot($params);
+                case 'future'   :   return $this->order_params_futures($params);
+            }
+        }
+
         // Parse order result
         public function parse_order($order) {
             if ((is_object($order)) && (get_class($order) == 'orderObject')) {
@@ -135,7 +303,7 @@
             $timestamp = strtotime($order['timestamp'] / 1000);
             $type = strtolower($order['type']);
             $direction = (strtolower($order['side']) == 'buy' ? 'long' : 'short');
-            $trigger = ($order['info']['stopPrice'] != 0 ? $order['info']['stopPrice'] : null);
+            $trigger = ((isset($order['info']['stopPrice']) && ($order['info']['stopPrice'] != 0)) ? $order['info']['stopPrice'] : null);
             $price = (isset($order['price']) ? $order['price'] : (!is_null($trigger) ? $trigger : null));
             if ((strtolower($type) == 'market') || ($price == null)) {
                 $price = $direction == 'buy' ? $market->ask : $market->bid;

@@ -77,6 +77,9 @@
             if ($data['exchange'] == 'binance') {
                 if (isset($params['type'])) {
                     if (in_array(strtolower($params['type']), ['spot', 'future', 'futures', 'margin'])) {
+                        if (strtolower($params['type']) == 'spot') {
+                            logger::notice("Since a spot exchange does not have the concept of 'positions', positions are emulated from current balances of assets against USDT");
+                        }
                         $data['parameters']['options'] = ['defaultType' => str_replace('futures','future',strtolower($params['type']))];
                     } else {
                         logger::error('Invalid type parameter. Should be "spot", "futures" or "margin"');
