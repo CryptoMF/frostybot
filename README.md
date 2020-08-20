@@ -2,7 +2,7 @@
 
 ## Summary
 
-FrostyBot is a minimal endpoint that is designed to be used with webhooks in Tradingview alerts. It is designed to work cryptocurrency exchanges, specifically Bitmex, Deribit or FTX (more will be added in future). It receives simple commands and translates them to specific exchange orders and sends them to the exchange. This allows you to write your strategies and do your backtesting on Tradingview (or python, or whatever you like), and then easily integrate your strategies with your exchange once you are happy with the backtest. This then allows you to use a Tradingview strategy or study as your trading engine, with Frostybot merely facilitating the integration to your exchange. It also allows you to integrate your exchange with any other product that can send webhooks, such as Telegram or Discord.
+FrostyBot is a minimal endpoint that is designed to be used with webhooks in Tradingview alerts. It is designed to work cryptocurrency exchanges, specifically Bitmex, Deribit, FTX and Binance Futures (more will be added in future). It receives simple commands and translates them to specific exchange orders and sends them to the exchange. This allows you to write your strategies and do your backtesting on Tradingview (or python, or whatever you like), and then easily integrate your strategies with your exchange once you are happy with the backtest. This then allows you to use a Tradingview strategy or study as your trading engine, with Frostybot merely facilitating the integration to your exchange. It also allows you to integrate your exchange with any other product that can send webhooks, such as Telegram or Discord.
 
 The way it works is simple:
 
@@ -36,6 +36,7 @@ Currently Bitmex, Deribit and FTX exchanges are supported for perpetual and futu
 * **Bitmex:**  BTC/USD and ETH/USD
 * **Deribit:** BTC-PERPETUAL and ETH-PERPETUAL
 * **FTX:** BTC-PERP and ETH-PERP
+* **Binance Futures:** BTC/USDT and ETH/USDT
 
 We will add more exchanges based on user demand. Keeping the code cross-compatible over all the exchanges is quite complex so we will only consider adding additional exchanges if a significant number of users request it. Bear in mind that this software is free, so we are under no obligation to add features or provide support, but we will endevour to help out when and where we can. Support can also be found in the [FrostyBot Discord Server](https://discord.gg/yK4U93s). There are a lot of very knowlegeable guys willing to help out if you need assistance.
 
