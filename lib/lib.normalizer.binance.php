@@ -25,8 +25,13 @@
                 if (in_array($currency, ['USDT','BUSD'])) {
                     $price = 1;
                 } else {
-                    $ticker = $tickers[$currency.'USDT'];
-                    $price = $ticker['askPrice'];    
+                    if (isset($tickers[$currency.'USDT'])) {
+                        $ticker = $tickers[$currency.'USDT'];
+                        $price = $ticker['askPrice'];        
+                    } else {
+                        $ticker = $this->ccxt->fetch_ticker($currency.'/USDT');
+                        $price = !is_null($ticker['ask']) ? $ticker['ask'] : $ticker['last'];
+                    }
                 }
                 $balanceFree = $balance['free'];
                 $balanceUsed = $balance['used'];
@@ -83,9 +88,17 @@
                     $quote = $market['quote'];
                     $base = $market['base'];
                     $expiration = null;
+                    $bid = null;
+                    $ask = null;
+                    if (isset($tickers[$id])) {
+                        $bid = (isset($tickers[$id]) ? (float) $tickers[$id]['bidPrice'] : null);
+                        $ask = (isset($tickers[$id]) ? (float) $tickers[$id]['askPrice'] : null);    
+                    } else {
+                        $ticker = $this->ccxt->fetch_ticker($base.'/USDT');
+                        $bid = (isset($ticker['bid']) ? $ticker['bid'] : null);
+                        $ask = (isset($ticker['ask']) ? $ticker['ask'] : null);
+                    }
                     //$expiration = (isset($market['info']['expiration']) ? $market['info']['expiration'] : null);
-                    $bid = (isset($tickers[$id]) ? (float) $tickers[$id]['bidPrice'] : null);
-                    $ask = (isset($tickers[$id]) ? (float) $tickers[$id]['askPrice'] : null);
                     $contractSize = 1;
                     $precision = [
                         'amount' => $market['limits']['amount']['min'],
