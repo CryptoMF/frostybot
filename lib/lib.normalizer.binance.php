@@ -29,7 +29,7 @@
                         $ticker = $tickers[$currency.'USDT'];
                         $price = $ticker['askPrice'];        
                     } else {
-                        $ticker = $this->ccxt->fetch_ticker($currency.'/USDT');
+                        $ticker = @$this->ccxt->fetch_ticker($currency.'/USDT');
                         $price = !is_null($ticker['ask']) ? $ticker['ask'] : $ticker['last'];
                     }
                 }
@@ -94,7 +94,7 @@
                         $bid = (isset($tickers[$id]) ? (float) $tickers[$id]['bidPrice'] : null);
                         $ask = (isset($tickers[$id]) ? (float) $tickers[$id]['askPrice'] : null);    
                     } else {
-                        $ticker = $this->ccxt->fetch_ticker($base.'/USDT');
+                        $ticker = $this->ccxt->fetch_ticker($symbol);
                         $bid = (isset($ticker['bid']) ? $ticker['bid'] : null);
                         $ask = (isset($ticker['ask']) ? $ticker['ask'] : null);
                     }
