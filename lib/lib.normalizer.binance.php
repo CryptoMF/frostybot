@@ -29,8 +29,7 @@
                         $ticker = $tickers[$currency.'USDT'];
                         $price = $ticker['askPrice'];        
                     } else {
-                        $ticker = @$this->ccxt->fetch_ticker($currency.'/USDT');
-                        $price = !is_null($ticker['ask']) ? $ticker['ask'] : $ticker['last'];
+                        $price = 0;
                     }
                 }
                 $balanceFree = $balance['free'];
