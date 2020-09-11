@@ -16,12 +16,31 @@
                 foreach($symbolmaps as $map) {
                     $symbolmap[$map->symbol] = $map->mapping;
                 }
+                $params = json_decode($row->parameters, true);
+                $testnet = false;
+                if (isset($params['urls']['api'])) {
+                    if (is_array($params['urls']['api'])) {
+                        foreach($params['urls']['api'] as $url) {
+                            if (strpos($url, 'test') !== false) {
+                                $testnet = true;
+                            }
+                        }
+                    } else {
+                        $url = $params['urls']['api'];
+                        if (strpos($url, 'test') !== false) {
+                            $testnet = true;
+                        }
+                    }
+                }
                 $account = [
                     'stub'          =>  strtolower($row->stub),
                     'description'   =>  $row->description,
                     'exchange'      =>  $row->exchange,
-                    'parameters'    =>  json_decode($row->parameters, true),
-                    'symbolmap'     =>  $symbolmap
+                    'parameters'    =>  $params,
+                    'type'          =>  isset($params['options']['defaultType']) ? $params['options']['defaultType'] : '',
+                    'subaccount'    =>  isset($params['headers']['FTX-SUBACCOUNT']) ? $params['headers']['FTX-SUBACCOUNT'] : '',
+                    'testnet'       =>  $testnet,
+                    'symbolmap'     =>  $symbolmap,
                 ];
             
                 if ((!is_null($accountStub)) && (strtolower($accountStub) == strtolower($stub))) {

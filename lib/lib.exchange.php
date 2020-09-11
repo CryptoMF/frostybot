@@ -741,6 +741,7 @@
             } else {                                                                             // This is a non-layered order
                 $result = $this->regular_order($params);
             }
+            cache::flush(0);
             return $result;
         }
 
@@ -943,7 +944,6 @@
                     $GLOBALS['balance'] = $balance;
                     $comment = isset($params['comment']) ? $params['comment'] : 'None';
                     logger::info('TRADE:CLOSE | Symbol: '.$symbol.' | Direction: '.$side.' | Type: '.$type.' | Size: '.($requestedSize * $market->contract_size).' | Price: '.(is_null($price) ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
-                    cache::flush(0);
                     return $orderResult;
                 }
             } else {
