@@ -933,7 +933,7 @@
             if ($this->ccxt->id != 'ftx') {
                 logger::error('Trailing stop is currently only supported on FTX');
             }
-            sleep(5);
+            sleep(2);
             cache::flush(0);
             $symbol = $params['symbol'];
             $market = $this->normalizer->get_market_by_symbol($symbol);
