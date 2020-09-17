@@ -552,7 +552,9 @@
                     'type'   => $type,
                     'amount' => $requestedSize,
                     'side'   => $side,
-                    'price'  => (isset($params['price']) ? $params['price'] : null)
+                    'price'  => (isset($params['price']) ? $params['price'] : null),
+                    'retry'  => (isset($params['retry']) ? $params['retry'] : null),
+                    'wait'   => (isset($params['wait']) ? $params['wait'] : 5),
                 ];
                 $orderResult = $this->submit_order($orderParams);
                 $balance = $this->total_balance_usd();
@@ -577,6 +579,8 @@
                             'entryprice' => (!is_null($price) ? $price : $marketprice),
                             'reduce' => (isset($params['reduce']) ? $params['reduce'] : false),
                             'triggertype' => (isset($params['triggertype']) ? $params['triggertype'] : null),
+                            'retry'  => (isset($params['retry']) ? $params['retry'] : null),
+                            'wait'   => (isset($params['wait']) ? $params['wait'] : 5),
                         ];
                         $slResult = $this->stoploss($slParams);
                         $linkedOrder->add($slResult);
@@ -588,7 +592,9 @@
                             'profittrigger' => $params['profittrigger'],
                             'size' => (isset($params['profitsize']) ? $params['profitsize'] : $size),
                             'entryprice' => (!is_null($price) ? $price : $marketprice),
-                            'reduce' => (isset($params['reduce']) ? $params['reduce'] : false)
+                            'reduce' => (isset($params['reduce']) ? $params['reduce'] : false),
+                            'retry'  => (isset($params['retry']) ? $params['retry'] : null),
+                            'wait'   => (isset($params['wait']) ? $params['wait'] : 5),
                         ];
                         $tpResult = $this->takeprofit($tpParams);
                         $linkedOrder->add($tpResult);
@@ -714,7 +720,9 @@
                 'type'   => is_null($price) ? 'market' : 'limit',
                 'amount' => $this->convert_size($size, $symbol, $price),
                 'side'   => $side,
-                'price'  => (isset($price) ? $price : null)
+                'price'  => (isset($price) ? $price : null),
+                'retry'  => (isset($params['retry']) ? $params['retry'] : null),
+                'wait'   => (isset($params['wait']) ? $params['wait'] : 5),
             ];
             $orderResult = $this->submit_order($orderParams);
             $balance = $this->total_balance_usd();
@@ -741,6 +749,7 @@
             } else {                                                                             // This is a non-layered order
                 $result = $this->regular_order($params);
             }
+            cache::flush(0);
             return $result;
         }
 
@@ -760,10 +769,45 @@
 
         // Regular non-layered order
         private function regular_order($params) {
+            if (isset($params['retry']) && ($params['retry'] !== false)) {
+                $params['retry'] = (is_numeric($params['retry']) ? $params['retry'] : 5);
+                $params['retrycount'] = isset($params['retrycount']) ? $params['retrycount'] : 0;
+                $params['wait'] = isset($params['wait']) && is_numeric($params['wait']) ? $params['wait'] : 2;
+            }
             $params['price'] = $this->convert_price($params['symbol'], (isset($params['price']) ? $params['price'] : null));
             $orderParams = $this->normalizer->order_params($params);
-            list ($symbol, $type, $side, $amount, $price, $params) = array_values((array) $orderParams);
-            $rawOrderResult = $this->ccxt->create_order($symbol, $type, $side, $amount, $price, $params);
+            list ($symbol, $type, $side, $amount, $price, $extraparams) = array_values((array) $orderParams);
+            $retryable = false;
+            try {
+                //throw new ccxt\DDoSProtection('Testing'); // Uncomment to test retry feature
+                $rawOrderResult = $this->ccxt->create_order($symbol, $type, $side, $amount, $price, $extraparams);
+            }
+            catch (ccxt\DDoSProtection $e) {
+                $retryable = true;
+                $errortype = 'DDOS Protection';
+            }
+            catch (ccxt\RateLimitExceeded $e) {
+                $retryable = true;
+                $errortype = 'Rate Limit Exceeded';
+            }
+            catch (ccxt\RequestTimeout $e) {
+                $retryable = true;
+                $errortype = 'Request Timeout';
+            }
+            catch (ccxt\ExchangeNotAvailable $e) {
+                $retryable = true;
+                $errortype = 'Exchange Unavailable';
+            }
+            if ($retryable === true) {                
+                $params['retrycount']++;
+                if ($params['retrycount'] >= $params['retry']) {
+                    logger::error('Order request has failed (Maximum retries reached)');
+                    return false;
+                }
+                logger::debug('Order failed ('.$errortype.'), retrying '.$params['retrycount'].' of '.$params['retry'].' in '.$params['wait'].' seconds...');
+                sleep($params['wait']);
+                return $this->regular_order($params);
+            }
             $parsedOrderResult = $this->parse_order($rawOrderResult);
             return $parsedOrderResult;
         }
@@ -889,6 +933,8 @@
             if ($this->ccxt->id != 'ftx') {
                 logger::error('Trailing stop is currently only supported on FTX');
             }
+            sleep(2);
+            cache::flush(0);
             $symbol = $params['symbol'];
             $market = $this->normalizer->get_market_by_symbol($symbol);
             $trailby = $this->get_relative_price($symbol, $params['trailstop']);
@@ -943,7 +989,6 @@
                     $GLOBALS['balance'] = $balance;
                     $comment = isset($params['comment']) ? $params['comment'] : 'None';
                     logger::info('TRADE:CLOSE | Symbol: '.$symbol.' | Direction: '.$side.' | Type: '.$type.' | Size: '.($requestedSize * $market->contract_size).' | Price: '.(is_null($price) ? 'Market' : $price).' | Balance: '.$balance.' | Comment: '.$comment);
-                    cache::flush(0);
                     return $orderResult;
                 }
             } else {

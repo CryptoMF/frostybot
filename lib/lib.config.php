@@ -16,12 +16,31 @@
                 foreach($symbolmaps as $map) {
                     $symbolmap[$map->symbol] = $map->mapping;
                 }
+                $params = json_decode($row->parameters, true);
+                $testnet = false;
+                if (isset($params['urls']['api'])) {
+                    if (is_array($params['urls']['api'])) {
+                        foreach($params['urls']['api'] as $url) {
+                            if (strpos($url, 'test') !== false) {
+                                $testnet = true;
+                            }
+                        }
+                    } else {
+                        $url = $params['urls']['api'];
+                        if (strpos($url, 'test') !== false) {
+                            $testnet = true;
+                        }
+                    }
+                }
                 $account = [
                     'stub'          =>  strtolower($row->stub),
                     'description'   =>  $row->description,
                     'exchange'      =>  $row->exchange,
-                    'parameters'    =>  json_decode($row->parameters, true),
-                    'symbolmap'     =>  $symbolmap
+                    'parameters'    =>  $params,
+                    'type'          =>  isset($params['options']['defaultType']) ? $params['options']['defaultType'] : '',
+                    'subaccount'    =>  isset($params['headers']['FTX-SUBACCOUNT']) ? $params['headers']['FTX-SUBACCOUNT'] : '',
+                    'testnet'       =>  $testnet,
+                    'symbolmap'     =>  $symbolmap,
                 ];
             
                 if ((!is_null($accountStub)) && (strtolower($accountStub) == strtolower($stub))) {
@@ -77,6 +96,9 @@
             if ($data['exchange'] == 'binance') {
                 if (isset($params['type'])) {
                     if (in_array(strtolower($params['type']), ['spot', 'future', 'futures', 'margin'])) {
+                        if (strtolower($params['type']) == 'spot') {
+                            logger::notice("Since a spot exchange does not have the concept of 'positions', positions are emulated from current balances of assets against USDT");
+                        }
                         $data['parameters']['options'] = ['defaultType' => str_replace('futures','future',strtolower($params['type']))];
                     } else {
                         logger::error('Invalid type parameter. Should be "spot", "futures" or "margin"');

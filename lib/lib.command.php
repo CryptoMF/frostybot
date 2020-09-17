@@ -70,10 +70,13 @@
             $this->params['stub'] = trim(strtolower($stub));
             $this->params['command'] = trim(strtolower($command));
             unset($arr['command']);
+            $debugstr = ($stub == "__frostybot__" ? $command : $stub.':'.$command);
             foreach($arr as $key => $value) {
                 $this->params[$key] = trim(str_replace(['“','”'],'',$value));
+                $debugstr .= ' '.$key.'='.$value;
             }
             logger::debug('Parsing complete: '. $this->type.' request received in '.$this->format.' format');
+            logger::debug('Command: '.$debugstr);
         }
 
         // Parse inline parameters (Example: ftx:close symbol=BTC-PERP)
@@ -83,8 +86,10 @@
             $arr = ['command' => $params[0]];
             array_shift($params);
             foreach($params as $param) {
-                list($key, $value) = explode("=", $param);
-                $arr[$key] = $value;
+                if (strpos($param, '=') !== false) {
+                    list($key, $value) = explode("=", $param);
+                    $arr[$key] = $value;
+                }
             }
             $this->parseArray($arr);
         }

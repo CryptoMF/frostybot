@@ -281,7 +281,7 @@
             }
             $market = $this->get_market_by_symbol($order['symbol']);
             $id = $order['id'];
-            $timestamp = strtotime($order['timestamp'] / 1000);
+            $timestamp = floor($order['timestamp'] / 1000);
             $type = strtolower($order['type']);
             $direction = (strtolower($order['side']) == 'buy' ? 'long' : 'short');
             $trigger = (isset($order['info']['triggerPrice']) ? $order['info']['triggerPrice'] : null);
