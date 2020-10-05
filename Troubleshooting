@@ -1,0 +1,45 @@
+1. Binance Spot and/or Futures trading does not work.
+You need the following commands to trade on Binance:
+
+For Spot:
+./frostybot config stub=binancespot exchange=binance apiKey="xxxxxx" secret="xxxxxxx" description="Main Binance Account" type=spot
+(Tradingview alert example: binancespot:long symbol=BTC/USDT size=+20)
+
+For Futures:
+./frostybot config stub=binancefutures exchange=binance apiKey="xxxxxx" secret="xxxxxxx" description="Main Binance Account" type=futures
+(Tradingview alert example: binancefutures:long symbol=BTC/USDT size=+20)
+
+2. Ftx subaccount trading does not work.
+When adding the API key for the sub account, you need to add the subaccount parameter. Also make sure that the subaccount used, has the same name as the subaccount on FTX.
+So if your subaccount on FTX is called ftxsub, use the folling command:
+
+./frostybot config stub=ftxsub subaccount:ftxsub exchange=ftx apiKey="<your api key>" secret="<your api secret>" description="ftxsub" testnet=false
+(Tradingview alert example: ftxsub:long symbol=BTC/USDT size=+20)
+
+
+3. Tradingview sends alerts, but they are no handled by Frosty.
+There are a few checks you can do to find the rootcause of this issue.
+3.1. Check whether Frosty is able to access the Exchange via API.
+   ./frostybot <stub>:balance of example: ./frostybot ftx:balance
+   If No, please check the API configuration. If Yes, check the logging:
+   cd /var/www/html/frostybot/log
+   More frostybot.log
+   If there is no logging around the time of the alert trigger, check the alert configuration in Tradingview
+3.2. Check the alert in Trading view.
+   Is the webhook enabled? It should look like https://ip-address/frostybot/
+   If that still does not work, check your firewall config at FAQ step 2.
+3.3. You can also try to troubleshoot at the command line, there for it's best to set the webhook to http, and open the firewall on port 80.
+   The on the commandline, listen for traffic via command: sudo tcpdump -vv port 80
+   Then in Tradingview, make sure an alert is triggered. when triggered, go back to the command and there if traffic has been received, it should look like:
+   tcpdump: listening on eth0, link-type EN10MB (Ethernet), capture size 262144 bytes
+        POST /frostybot HTTP/1.1
+        Host: yourhost
+        User-Agent: Go-http-client/1.1
+        Content-Length: 45
+        Content-Type: text/plain; charset=utf-8
+        Accept-Encoding: gzip
+
+        ftx:long symbol=AMPL-PERP size=10 price=-0.01[!http]
+   
+4. Error: "message": "Required parameter not found: stub"
+This is probably caused by a fault in the webhook configuration within Tradingview, make sure you use the following webhook example: https://ip-address/frostybot/
