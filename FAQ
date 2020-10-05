@@ -1,0 +1,25 @@
+Frosty FAQ:
+
+1. Is there a list of basic commands?
+Yes, there is a list of basic commands which can be found here:
+https://github.com/CryptoMF/frostybot
+
+2. How should I add firewall rules?
+Firewall rules can be added in the Lightsail configuration of your server (networking).
+You should at least accept traffic for the Tradingview IP addresses below on port 443.
+As we allow traffic on port 443(Secure) you need to make sure that the Tradingview alert is being sent via https webhook (example: https://ip-address/frostybot/)
+
+34.212.75.30
+52.32.178.7
+52.89.214.238
+54.218.53.128
+
+3. How can I add Telegram alerts:
+To activate telegram alerts, you need the following.
+ 1. Create a Telegram bot via botfather. (https://t.me/botfather)
+ 2. Retrieve the chat-id (https://stackoverflow.com/questions/32423837/telegram-bot-how-to-get-a-group-chat-id)
+ 3. Add the config to Frosty bot: ./frostybot notifications platform=telegram token=<bot token> user=<bot user> chat_id=<chat id>
+
+4. How can I deactivate Telegram alerts:
+The telegram config can be removed with the following command:
+./frostybot notifications platform=telegram delete=true
