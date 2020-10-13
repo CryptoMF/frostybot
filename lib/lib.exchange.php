@@ -985,7 +985,7 @@
                         'reduce' => true
                     ];
                     $orderResult = $this->submit_order($orderParams);
-                    cache_flush(0);
+                    cache::flush(0);
                     $balance = $this->total_balance_usd();
                     $GLOBALS['balance'] = $balance;
                     $comment = isset($params['comment']) ? $params['comment'] : 'None';
