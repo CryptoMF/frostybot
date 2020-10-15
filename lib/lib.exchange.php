@@ -440,6 +440,28 @@
             return $size;
         }
 
+        // Scale an existing position
+        public function scale($params) {
+            $symbol = $params['symbol'];
+            $scale = $params['scale'];
+            $position_size = $this->position_size_usd($symbol);
+            if ($position_size > 0) {
+                $scale_size = ($position_size * $scale) - $position_size;
+                $position_direction = $this->position_direction($symbol);
+                $params['size'] = abs($scale_size);
+                switch ($position_direction) {
+                    case 'long'     :   return ($scale_size > 0 ? $this->buy($params) : $this->sell($params));
+                                        break;
+                    case 'short'    :   return ($scale_size > 0 ? $this->sell($params) : $this->buy($params));
+                                        break;
+                }
+            } else {
+                logger::error('Cannot scale position because you do not have a position on '.$symbol);
+                return false;
+            }
+        }
+
+
         // Perform Trade
         private function trade($direction, $params) {
             $stub = $params['stub'];
@@ -681,7 +703,7 @@
                 logger::error('Size parameter must be a positive value in USD.');
                 return false;
             }
-            if ((!is_numeric($maxSize)) || ($maxSize < 0)) {
+            if ((!is_null($maxSize)) && ((!is_numeric($maxSize)) || ($maxSize < 0))) {
                 logger::error('Maxsize parameter must be a positive value in USD.');
                 return false;
             }
