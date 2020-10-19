@@ -13,7 +13,7 @@ For Futures:
 When adding the API key for the sub account, you need to add the subaccount parameter. Also make sure that the subaccount used, has the same name as the subaccount on FTX.
 So if your subaccount on FTX is called ftxsub, use the folling command:
 
-./frostybot config stub=ftxsub subaccount:ftxsub exchange=ftx apiKey="<your api key>" secret="<your api secret>" description="ftxsub" testnet=false
+./frostybot config stub=ftxsub subaccount=ftxsub exchange=ftx apiKey="<your api key>" secret="<your api secret>" description="ftxsub" testnet=false
 (Tradingview alert example: ftxsub:long symbol=BTC/USDT size=+20)
 
 
