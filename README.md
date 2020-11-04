@@ -1,5 +1,9 @@
 ![logo](https://i.imgur.com/YAME6yT.png "#FrostyBot")
 
+## Notice
+
+If you currently use the FTX exchange, we highly recommend that you check out [Frostybot-JS](https://github.com/CryptoMF/frostybot-js) instead. It's built using NodeJS so Apache and PHP are not required.
+
 ## Summary
 
 FrostyBot is a minimal endpoint that is designed to be used with webhooks in Tradingview alerts. It is designed to work cryptocurrency exchanges, specifically Bitmex, Deribit, FTX and Binance Futures (more will be added in future). It receives simple commands and translates them to specific exchange orders and sends them to the exchange. This allows you to write your strategies and do your backtesting on Tradingview (or python, or whatever you like), and then easily integrate your strategies with your exchange once you are happy with the backtest. This then allows you to use a Tradingview strategy or study as your trading engine, with Frostybot merely facilitating the integration to your exchange. It also allows you to integrate your exchange with any other product that can send webhooks, such as Telegram or Discord.
