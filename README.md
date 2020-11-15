@@ -2,7 +2,7 @@
 
 ## Notice
 
-If you currently use the FTX, Deribit or Binance (Spot and Futures), we highly recommend that you check out [Frostybot-JS](https://github.com/CryptoMF/frostybot-js) instead. It's built using NodeJS so Apache and PHP are not required.
+We highly recommend that you check out [Frostybot-JS](https://github.com/CryptoMF/frostybot-js) instead. It's built using NodeJS so Apache and PHP are not required.
 
 ## Summary
 
