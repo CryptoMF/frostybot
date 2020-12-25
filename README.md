@@ -1,6 +1,10 @@
 ![logo](https://i.imgur.com/YAME6yT.png "#FrostyBot")
 
-> :warning: **Deprecation Notice**: This version of Frostybot is no longer under active development. We highly recommend that you check out [Frostybot-JS](https://github.com/CryptoMF/frostybot-js) instead. It's built using NodeJS so Apache and PHP are not required.
+## IMPORTANT NOTICE
+
+:warning: **Deprecation Notice**: This version of Frostybot is no longer under active development. We highly recommend that you check out [Frostybot-JS](https://github.com/CryptoMF/frostybot-js) instead. It's built using NodeJS so Apache and PHP are not required.
+
+-----
 
 ## Summary
 
