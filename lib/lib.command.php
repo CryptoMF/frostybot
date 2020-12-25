@@ -231,6 +231,8 @@
                                                 break;
                         case 'SELL'         :   $result = $this->exchange->sell(requiredParams($this->params,['symbol', 'size']));
                                                 break;
+                        case 'SCALE'        :   $result = $this->exchange->scale(requiredParams($this->params,['symbol', 'scale']));
+                                                break;
                         case 'CLOSE'        :   $result = $this->exchange->close(requiredParams($this->params,['symbol']));
                                                 break;
                         case 'STOPLOSS'     :   $result = $this->exchange->stoploss(requiredParams($this->params,['symbol','stoptrigger']));
